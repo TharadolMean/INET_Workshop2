@@ -1,0 +1,23 @@
+{
+  "name": "grade-calculator",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build"
+  },
+  "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "core-js": "^3.37.1",
+    "vue": "^2.7.16",
+    "vue-router": "^3.6.5",
+    "vuetify": "^2.7.2"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "^5.0.8",
+    "@vue/cli-service": "^5.0.8",
+    "babel-plugin-transform-vue-jsx": "^4.0.1",
+    "sass": "1.77.8",
+    "sass-loader": "^10.5.2"
+  }
+}
