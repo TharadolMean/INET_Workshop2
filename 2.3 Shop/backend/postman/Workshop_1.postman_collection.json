@@ -96,9 +96,9 @@
           }
         },
         {
-          "name": "User ทั่วไป approve ไม่ได้ (401)",
+          "name": "User ทั่วไป approve ไม่ได้ (403)",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-            "pm.test('401 admin only', () => pm.response.to.have.status(401));"
+            "pm.test('403 admin only', () => pm.response.to.have.status(403));"
           ] } }],
           "request": {
             "method": "PUT",
@@ -112,27 +112,40 @@
       "name": "2. Products",
       "item": [
         {
-          "name": "Create product (stock 10)",
+          "name": "Admin: Create product (stock 10)",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('201 created', () => pm.response.to.have.status(201));",
             "pm.collectionVariables.set('productId', pm.response.json().data._id);"
           ] } }],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
             "body": { "mode": "raw", "raw": "{\n  \"name\": \"Keyboard\",\n  \"description\": \"Mechanical keyboard\",\n  \"price\": 1500,\n  \"stock\": 10\n}" },
             "url": "{{baseUrl}}/products"
           }
         },
         {
-          "name": "Create product (ข้อมูลไม่ครบ -> 400)",
+          "name": "Admin: Create product (ข้อมูลไม่ครบ -> 400)",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('400', () => pm.response.to.have.status(400));"
           ] } }],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
             "body": { "mode": "raw", "raw": "{\n  \"description\": \"no name and price\"\n}" },
+            "url": "{{baseUrl}}/products"
+          }
+        },
+        {
+          "name": "Admin: Create second product for multi-item order",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 created', () => pm.response.to.have.status(201));",
+            "pm.collectionVariables.set('productId2', pm.response.json().data._id);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Wireless Mouse\",\n  \"description\": \"Multi-item order test product\",\n  \"price\": 500,\n  \"stock\": 5\n}" },
             "url": "{{baseUrl}}/products"
           }
         },
@@ -161,14 +174,14 @@
           "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }], "url": "{{baseUrl}}/products/000000000000000000000000" }
         },
         {
-          "name": "Update product",
+          "name": "Admin: Update product",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('200', () => pm.response.to.have.status(200));",
             "pm.test('price updated', () => pm.expect(pm.response.json().data.price).to.eql(1800));"
           ] } }],
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{adminToken}}" }],
             "body": { "mode": "raw", "raw": "{\n  \"price\": 1800\n}" },
             "url": "{{baseUrl}}/products/{{productId}}"
           }
@@ -213,20 +226,48 @@
           }
         },
         {
-          "name": "Get orders of product",
+          "name": "Admin: Get orders of product",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('200', () => pm.response.to.have.status(200));",
             "pm.test('1 order', () => pm.expect(pm.response.json().data).to.have.lengthOf(1));"
           ] } }],
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }], "url": "{{baseUrl}}/products/{{productId}}/orders" }
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/products/{{productId}}/orders" }
         },
         {
-          "name": "Get all orders",
+          "name": "Create multi-item order (requires MongoDB replica set)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 created', () => pm.response.to.have.status(201));",
+            "const d = pm.response.json().data;",
+            "pm.test('two items in one order', () => pm.expect(d.items).to.have.lengthOf(2));",
+            "pm.test('total = 2300', () => pm.expect(d.totalPrice).to.eql(2300));",
+            "pm.collectionVariables.set('batchOrderId', d._id);"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"items\": [\n    { \"product\": \"{{productId}}\", \"quantity\": 1 },\n    { \"product\": \"{{productId2}}\", \"quantity\": 2 }\n  ]\n}" },
+            "url": "{{baseUrl}}/orders"
+          }
+        },
+        {
+          "name": "Multi-item stock failure rolls back (requires MongoDB replica set)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('400 stock validation', () => pm.response.to.have.status(400));"
+          ] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"items\": [\n    { \"product\": \"{{productId}}\", \"quantity\": 999 },\n    { \"product\": \"{{productId2}}\", \"quantity\": 1 }\n  ]\n}" },
+            "url": "{{baseUrl}}/orders"
+          }
+        },
+        {
+          "name": "Admin: Get all orders",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('200', () => pm.response.to.have.status(200));",
             "pm.test('data is array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
           ] } }],
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }], "url": "{{baseUrl}}/orders" }
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/orders" }
         },
         {
           "name": "ไม่มี token (401)",
@@ -241,11 +282,18 @@
       "name": "4. Cleanup",
       "item": [
         {
-          "name": "Delete product",
+          "name": "Admin: Delete product",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('200 deleted', () => pm.response.to.have.status(200));"
           ] } }],
-          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }], "url": "{{baseUrl}}/products/{{productId}}" }
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/products/{{productId}}" }
+        },
+        {
+          "name": "Admin: Delete second product",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 deleted', () => pm.response.to.have.status(200));"
+          ] } }],
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/products/{{productId2}}" }
         }
       ]
     }

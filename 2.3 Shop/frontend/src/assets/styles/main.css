@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --page-bg: #f5f7fb;
+  --card-bg: #ffffff;
+  --muted: #64748b;
+  --text: #172033;
+  --border: #e4e9f2;
+}
+
+html,
+body {
+  background: var(--page-bg);
+  font-family: 'Prompt', sans-serif !important;
+}
+
+.v-application {
+  background: var(--page-bg) !important;
+}
+
+.app-shell-card {
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 24px rgba(42, 55, 85, 0.07) !important;
+}
+
+.page-title {
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.muted-text {
+  color: var(--muted);
+}
+
+.v-application {
+  color: var(--text) !important;
+}
+
+.v-app-bar {
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: 0 2px 12px rgba(42, 55, 85, 0.06) !important;
+}
+
+.v-btn--text {
+  color: #46536b !important;
+}
+
+.v-btn--text.v-btn--active,
+.v-btn--text:hover {
+  color: #6537d7 !important;
+}
+
+.v-data-table {
+  color: var(--text) !important;
+}
+
+.v-data-table > .v-data-table__wrapper > table > thead > tr > th {
+  color: #526078 !important;
+  font-weight: 600 !important;
+}
+
+.v-data-table > .v-data-table__wrapper > table > tbody > tr:hover {
+  background: #f7f5ff !important;
+}
+
+.v-navigation-drawer {
+  border-right: 1px solid var(--border) !important;
+}
+
+.product-card {
+  height: 100%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(92, 62, 190, 0.16) !important;
+}
+
+.product-image {
+  background: linear-gradient(135deg, #ede9fe, #e0f2fe);
+}
+
+.price-text {
+  color: #6537d7;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.sticky-card {
+  position: sticky;
+  top: 90px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+}

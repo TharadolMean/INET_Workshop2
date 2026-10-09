@@ -18,18 +18,19 @@ router.use(authenticate);
 router.get('/users', requireAdmin, user.list);
 router.put('/users/:id/approve', requireAdmin, validateId, user.approve);
 
-// Orders (ทั้งหมด)
-router.get('/orders', order.listAll);
+// Orders (admin ดูรายการทั้งหมด, user สร้าง Order ได้)
+router.get('/orders', requireAdmin, order.listAll);
+router.post('/orders', order.createBatch);
 
-// Products
+// Products (ทุก role อ่านได้, admin เท่านั้นที่จัดการ)
 router.get('/products', product.list);
-router.post('/products', product.create);
+router.post('/products', requireAdmin, product.create);
 router.get('/products/:id', validateId, product.getOne);
-router.put('/products/:id', validateId, product.update);
-router.delete('/products/:id', validateId, product.remove);
+router.put('/products/:id', requireAdmin, validateId, product.update);
+router.delete('/products/:id', requireAdmin, validateId, product.remove);
 
-// Orders ใน Product
-router.get('/products/:id/orders', validateId, order.listByProduct);
+// Orders ใน Product (admin ดูประวัติ, user สร้าง Order)
+router.get('/products/:id/orders', requireAdmin, validateId, order.listByProduct);
 router.post('/products/:id/orders', validateId, order.create);
 
 module.exports = router;

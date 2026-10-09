@@ -63,6 +63,8 @@ exports.update = async (req, res) => {
 exports.remove = async (req, res) => {
   const product = await Product.findByIdAndDelete(req.params.id);
   if (!product) return r.badRequest(res, 'product not found');
-  await Order.deleteMany({ product: product._id });
+  await Order.deleteMany({
+    $or: [{ product: product._id }, { 'items.product': product._id }],
+  });
   return r.ok(res, product, 'deleted');
 };

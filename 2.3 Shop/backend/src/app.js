@@ -1,8 +1,20 @@
 const express = require('express');
+const cors = require('cors');
 const routes = require('./routes');
 const r = require('./utils/response');
 
 const app = express();
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:8080')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('origin not allowed by CORS'));
+  },
+}));
 app.use(express.json());
 
 app.use('/api/v1', routes);

@@ -30,7 +30,7 @@ const authenticate = async (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
-  if (req.user?.role !== 'admin') return res_.unauthorized(res, 'admin only');
+  if (req.user?.role !== 'admin') return res_.forbidden(res, 'admin only');
   next();
 };
 
