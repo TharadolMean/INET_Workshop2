@@ -11,6 +11,7 @@
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
     <v-card class="app-shell-card">
       <v-data-table :headers="headers" :items="products" :loading="loading" loading-text="กำลังโหลดสินค้า..." no-data-text="ยังไม่มีสินค้า">
+        <template v-slot:item.category="{ item }">{{ categoryName(item) }}</template>
         <template v-slot:item.price="{ item }">{{ formatPrice(item.price) }} บาท</template>
         <template v-slot:item.stock="{ item }">
           <v-chip small :color="item.stock > 0 ? 'success' : 'error'">{{ item.stock }}</v-chip>
@@ -26,7 +27,7 @@
     <v-dialog v-model="dialog" max-width="620">
       <v-card class="app-shell-card">
         <v-card-title>{{ editing ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่' }}</v-card-title>
-        <v-card-text><product-form :value="editing || undefined" :loading="saving" @submit="save" @cancel="dialog = false" /></v-card-text>
+        <v-card-text><product-form :value="editing || undefined" :categories="categories" :loading="saving" @submit="save" @cancel="dialog = false" /></v-card-text>
       </v-card>
     </v-dialog>
     <v-dialog v-model="deleteDialog" max-width="430">
@@ -43,6 +44,7 @@
 <script>
 import ProductForm from '../components/products/ProductForm.vue';
 import { getApiError } from '../services/api';
+import categoryService from '../services/categoryService';
 
 export default {
   name: 'AdminProductsView',
@@ -58,8 +60,10 @@ export default {
     snackbar: false,
     snackbarText: '',
     snackbarColor: 'success',
+    categories: [],
     headers: [
       { text: 'สินค้า', value: 'name' },
+      { text: 'หมวดหมู่', value: 'category', sortable: false },
       { text: 'รายละเอียด', value: 'description', sortable: false },
       { text: 'ราคา', value: 'price' },
       { text: 'สต็อก', value: 'stock' },
@@ -82,7 +86,11 @@ export default {
     async load() {
       this.error = '';
       try {
-        await this.$store.dispatch('products/fetchProducts');
+        const [, { data }] = await Promise.all([
+          this.$store.dispatch('products/fetchProducts'),
+          categoryService.list(),
+        ]);
+        this.categories = (data.data || []).filter((category) => category.isActive);
       } catch (error) {
         this.error = getApiError(error, 'โหลดสินค้าไม่สำเร็จ');
       }
@@ -92,7 +100,10 @@ export default {
       this.dialog = true;
     },
     openEdit(product) {
-      this.editing = { ...product };
+      this.editing = {
+        ...product,
+        category: product.category && product.category._id ? product.category._id : product.category,
+      };
       this.dialog = true;
     },
     async save(payload) {
@@ -130,6 +141,9 @@ export default {
     },
     formatPrice(value) {
       return new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(value);
+    },
+    categoryName(product) {
+      return product.category?.name || 'ยังไม่ได้จัดหมวดหมู่';
     },
     formatDate(value) {
       return value ? new Date(value).toLocaleString('th-TH') : '-';

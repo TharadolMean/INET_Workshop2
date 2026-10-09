@@ -10,11 +10,18 @@
     <v-card v-else-if="product" class="app-shell-card overflow-hidden">
       <v-row no-gutters>
         <v-col cols="12" md="5" class="product-image d-flex align-center justify-center" style="min-height: 360px;">
-          <v-icon size="150" color="rgba(255,255,255,.55)">mdi-circuit-board</v-icon>
+          <v-img
+            v-if="product.image && product.image.path && !imageFailed"
+            :src="product.image.path"
+            max-height="360"
+            contain
+            @error="imageFailed = true"
+          />
+          <v-icon v-else size="150" color="rgba(255,255,255,.55)">mdi-circuit-board</v-icon>
         </v-col>
         <v-col cols="12" md="7">
           <v-card-text class="pa-8">
-            <div class="text-overline secondary--text">ELECTRONICS PRODUCT</div>
+            <div class="text-overline secondary--text">{{ (product.category && product.category.name) || 'ELECTRONICS PRODUCT' }}</div>
             <h1 class="page-title">{{ product.name }}</h1>
             <div class="price-text my-5">{{ formatPrice(product.price) }} บาท</div>
             <p class="muted-text text-body-1">{{ product.description || 'รายละเอียดสินค้าจะแสดงที่นี่' }}</p>
@@ -54,6 +61,7 @@ export default {
     snackbar: false,
     snackbarText: '',
     snackbarColor: 'success',
+    imageFailed: false,
   }),
   computed: {
     canAdd() {

@@ -8,6 +8,7 @@ import ProductsView from '../views/ProductsView.vue';
 import ProductDetailView from '../views/ProductDetailView.vue';
 import CartView from '../views/CartView.vue';
 import AdminProductsView from '../views/AdminProductsView.vue';
+import AdminCategoriesView from '../views/AdminCategoriesView.vue';
 import AdminOrdersView from '../views/AdminOrdersView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
 
@@ -31,6 +32,12 @@ const router = new Router({
       path: '/admin/products',
       name: 'admin-products',
       component: AdminProductsView,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/categories',
+      name: 'admin-categories',
+      component: AdminCategoriesView,
       meta: { requiresAuth: true, requiresAdmin: true },
     },
     {

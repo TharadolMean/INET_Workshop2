@@ -17,6 +17,7 @@
         </v-btn>
         <template v-if="isAdmin">
           <v-btn text to="/admin/products">จัดการสินค้า</v-btn>
+          <v-btn text to="/admin/categories">หมวดหมู่</v-btn>
           <v-btn text to="/admin/orders">ออเดอร์</v-btn>
           <v-btn text to="/admin/users">ผู้ใช้</v-btn>
         </template>
@@ -50,6 +51,7 @@
         <template v-if="isAdmin">
           <v-subheader>การจัดการ</v-subheader>
           <v-list-item to="/admin/products" @click="drawer = false"><v-list-item-title>สินค้า</v-list-item-title></v-list-item>
+          <v-list-item to="/admin/categories" @click="drawer = false"><v-list-item-title>หมวดหมู่</v-list-item-title></v-list-item>
           <v-list-item to="/admin/orders" @click="drawer = false"><v-list-item-title>คำสั่งซื้อ</v-list-item-title></v-list-item>
           <v-list-item to="/admin/users" @click="drawer = false"><v-list-item-title>ผู้ใช้</v-list-item-title></v-list-item>
         </template>
