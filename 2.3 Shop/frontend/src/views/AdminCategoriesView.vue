@@ -14,7 +14,7 @@
     </v-row>
 
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
-    <v-card class="app-shell-card">
+    <v-card class="app-shell-card admin-table-card">
       <v-data-table :headers="headers" :items="categories" :loading="loading" no-data-text="ยังไม่มีหมวดหมู่">
         <template v-slot:item.isActive="{ item }">
           <v-chip small :color="item.isActive ? 'success' : 'grey'">

@@ -9,7 +9,7 @@
       <v-col cols="auto"><v-btn icon color="secondary" :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
     </v-row>
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
-    <v-card class="app-shell-card">
+    <v-card class="app-shell-card admin-table-card">
       <v-data-table :headers="headers" :items="orders" :loading="loading" loading-text="กำลังโหลดคำสั่งซื้อ..." no-data-text="ยังไม่มีคำสั่งซื้อ">
         <template v-slot:item._id="{ item }"><code>{{ shortId(item._id) }}</code></template>
         <template v-slot:item.product="{ item }">{{ productSummary(item) }}</template>

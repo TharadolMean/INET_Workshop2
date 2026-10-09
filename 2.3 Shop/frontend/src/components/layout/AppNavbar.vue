@@ -7,22 +7,35 @@
         ElectroHub
       </v-toolbar-title>
       <v-spacer />
+      <v-text-field
+        v-model="searchTerm"
+        class="nav-search d-none d-lg-flex mr-4"
+        label="ค้นหาสินค้า"
+        prepend-inner-icon="mdi-magnify"
+        append-icon="mdi-arrow-right"
+        clearable
+        dense
+        outlined
+        hide-details
+        @keyup.enter="searchProducts"
+        @click:append="searchProducts"
+      />
       <div class="d-none d-md-flex align-center">
-        <v-btn text to="/products">สินค้า</v-btn>
-        <v-btn text to="/cart">
+        <v-btn text class="nav-link" to="/products">สินค้า</v-btn>
+        <v-btn text class="nav-link" to="/cart">
           <v-badge :content="cartCount" :value="cartCount" color="secondary" overlap>
             <v-icon>mdi-cart-outline</v-icon>
           </v-badge>
           <span class="ml-2">ตะกร้า</span>
         </v-btn>
-        <template v-if="isAdmin">
-          <v-btn text to="/admin/products">จัดการสินค้า</v-btn>
-          <v-btn text to="/admin/categories">หมวดหมู่</v-btn>
-          <v-btn text to="/admin/orders">ออเดอร์</v-btn>
-          <v-btn text to="/admin/users">ผู้ใช้</v-btn>
-        </template>
+        <div v-if="isAdmin" class="admin-nav-links d-flex align-center">
+          <v-btn text class="nav-link" to="/admin/products">จัดการสินค้า</v-btn>
+          <v-btn text class="nav-link" to="/admin/categories">หมวดหมู่</v-btn>
+          <v-btn text class="nav-link" to="/admin/orders">ออเดอร์</v-btn>
+          <v-btn text class="nav-link" to="/admin/users">ผู้ใช้</v-btn>
+        </div>
       </div>
-      <v-btn v-if="isAuthenticated" icon class="ml-2" @click="logout">
+      <v-btn v-if="isAuthenticated" icon class="ml-2" aria-label="ออกจากระบบ" @click="logout">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
       <v-btn v-else outlined color="primary" to="/login">เข้าสู่ระบบ</v-btn>
@@ -43,6 +56,10 @@
         <v-list-item to="/products" @click="drawer = false">
           <v-list-item-icon><v-icon>mdi-storefront-outline</v-icon></v-list-item-icon>
           <v-list-item-title>สินค้า</v-list-item-title>
+        </v-list-item>
+        <v-list-item @click="searchProducts">
+          <v-list-item-icon><v-icon>mdi-magnify</v-icon></v-list-item-icon>
+          <v-list-item-title>ค้นหาสินค้า</v-list-item-title>
         </v-list-item>
         <v-list-item to="/cart" @click="drawer = false">
           <v-list-item-icon><v-icon>mdi-cart-outline</v-icon></v-list-item-icon>
@@ -67,7 +84,7 @@
 <script>
 export default {
   name: 'AppNavbar',
-  data: () => ({ drawer: false }),
+  data: () => ({ drawer: false, searchTerm: '' }),
   computed: {
     isAuthenticated() {
       return this.$store.getters['auth/isAuthenticated'];
@@ -83,6 +100,13 @@ export default {
     },
   },
   methods: {
+    searchProducts() {
+      this.drawer = false;
+      this.$router.push({
+        name: 'products',
+        query: this.searchTerm.trim() ? { q: this.searchTerm.trim() } : {},
+      });
+    },
     logout() {
       this.$store.dispatch('auth/logout');
       this.drawer = false;

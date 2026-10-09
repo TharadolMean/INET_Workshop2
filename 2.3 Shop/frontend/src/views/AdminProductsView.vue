@@ -9,7 +9,7 @@
       <v-col cols="auto"><v-btn color="primary" @click="openCreate"><v-icon left>mdi-plus</v-icon>เพิ่มสินค้า</v-btn></v-col>
     </v-row>
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
-    <v-card class="app-shell-card">
+    <v-card class="app-shell-card admin-table-card">
       <v-data-table :headers="headers" :items="products" :loading="loading" loading-text="กำลังโหลดสินค้า..." no-data-text="ยังไม่มีสินค้า">
         <template v-slot:item.category="{ item }">{{ categoryName(item) }}</template>
         <template v-slot:item.price="{ item }">{{ formatPrice(item.price) }} บาท</template>

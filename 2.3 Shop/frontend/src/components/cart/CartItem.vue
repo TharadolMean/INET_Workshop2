@@ -1,5 +1,5 @@
 <template>
-  <v-card class="app-shell-card mb-3">
+  <v-card class="app-shell-card mb-3 cart-item-card">
     <v-card-text>
       <v-row align="center">
         <v-col cols="12" sm="2">

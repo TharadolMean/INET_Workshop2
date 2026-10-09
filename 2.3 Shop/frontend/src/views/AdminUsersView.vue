@@ -9,7 +9,7 @@
       <v-col cols="auto"><v-btn icon color="secondary" :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
     </v-row>
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
-    <v-card class="app-shell-card">
+    <v-card class="app-shell-card admin-table-card">
       <v-data-table :headers="headers" :items="users" :loading="loading" loading-text="กำลังโหลดผู้ใช้งาน..." no-data-text="ไม่มีผู้ใช้ที่รออนุมัติ">
         <template v-slot:item.isApproved="{ item }"><v-chip small :color="item.isApproved ? 'success' : 'warning'">{{ item.isApproved ? 'อนุมัติแล้ว' : 'รออนุมัติ' }}</v-chip></template>
         <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>

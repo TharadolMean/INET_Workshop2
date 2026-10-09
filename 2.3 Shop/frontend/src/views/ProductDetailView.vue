@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-btn text color="secondary" class="mb-5" to="/products">
+    <v-btn text color="primary" class="mb-5" to="/products">
       <v-icon left>mdi-arrow-left</v-icon>กลับไปหน้าสินค้า
     </v-btn>
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
@@ -9,31 +9,38 @@
     </v-row>
     <v-card v-else-if="product" class="app-shell-card overflow-hidden">
       <v-row no-gutters>
-        <v-col cols="12" md="5" class="product-image d-flex align-center justify-center" style="min-height: 360px;">
+        <v-col cols="12" md="5" class="product-image d-flex align-center justify-center pa-6" style="min-height: 420px;">
           <v-img
             v-if="product.image && product.image.path && !imageFailed"
             :src="product.image.path"
-            max-height="360"
+            max-height="390"
             contain
             @error="imageFailed = true"
           />
-          <v-icon v-else size="150" color="rgba(255,255,255,.55)">mdi-circuit-board</v-icon>
+          <div v-else class="product-fallback text-center">
+            <v-icon size="150" color="rgba(37,99,235,.28)">mdi-circuit-board</v-icon>
+            <div class="caption muted-text">ภาพสินค้าจะแสดงที่นี่</div>
+          </div>
         </v-col>
         <v-col cols="12" md="7">
-          <v-card-text class="pa-8">
-            <div class="text-overline secondary--text">{{ (product.category && product.category.name) || 'ELECTRONICS PRODUCT' }}</div>
+          <v-card-text class="pa-6 pa-md-10">
+            <div class="text-overline secondary--text">
+              {{ (product.category && product.category.name) || 'อุปกรณ์อิเล็กทรอนิกส์' }}
+            </div>
             <h1 class="page-title">{{ product.name }}</h1>
-            <div class="price-text my-5">{{ formatPrice(product.price) }} บาท</div>
-            <p class="muted-text text-body-1">{{ product.description || 'รายละเอียดสินค้าจะแสดงที่นี่' }}</p>
+            <div class="price-text my-6">{{ formatPrice(product.price) }} บาท</div>
+            <p class="muted-text text-body-1 product-detail-description">
+              {{ product.description || 'รายละเอียดสินค้าจะแสดงที่นี่' }}
+            </p>
             <v-chip :color="product.stock > 0 ? 'success' : 'error'" class="my-3">
               {{ product.stock > 0 ? `มีสินค้า ${product.stock} ชิ้น` : 'หมดสต็อก' }}
             </v-chip>
             <v-divider class="my-5" />
-            <v-row align="center">
-              <v-col cols="12" sm="5">
-                <v-text-field v-model.number="quantity" type="number" min="1" :max="product.stock" label="จำนวน" outlined :disabled="product.stock < 1" />
+            <v-row align="end">
+              <v-col cols="12" sm="4">
+                <v-text-field v-model.number="quantity" type="number" min="1" :max="product.stock" label="จำนวน" outlined dense :disabled="product.stock < 1" />
               </v-col>
-              <v-col cols="12" sm="7">
+              <v-col cols="12" sm="8">
                 <v-btn block large color="primary" :disabled="!canAdd" @click="addToCart">
                   <v-icon left>mdi-cart-plus</v-icon>เพิ่มลงตะกร้า
                 </v-btn>

@@ -1,9 +1,10 @@
 <template>
   <div>
-    <v-row align="center" class="mb-6">
+    <v-row align="center" class="mb-8">
       <v-col>
-        <div class="text-overline primary--text">YOUR SELECTION</div>
+        <div class="text-overline primary--text">YOUR SELECTION / CART</div>
         <h1 class="page-title">ตะกร้าสินค้า</h1>
+        <p class="muted-text mb-0">ตรวจสอบรายการสินค้าและจำนวนก่อนยืนยันคำสั่งซื้อ</p>
       </v-col>
       <v-col cols="auto">
         <v-btn v-if="items.length" text color="error" @click="clearDialog = true">
@@ -15,6 +16,10 @@
     <v-alert v-if="error" type="error" outlined class="mb-5">{{ error }}</v-alert>
     <v-row v-if="items.length">
       <v-col cols="12" md="8">
+        <div class="d-flex align-center justify-space-between mb-3">
+          <div class="section-heading">รายการสินค้า</div>
+          <div class="muted-text caption">{{ count }} ชิ้น</div>
+        </div>
         <cart-item
           v-for="item in items"
           :key="item.product._id"
@@ -24,8 +29,9 @@
         />
       </v-col>
       <v-col cols="12" md="4">
-        <v-card class="app-shell-card pa-5 sticky-card">
-          <div class="text-h6 mb-5">สรุปคำสั่งซื้อ</div>
+        <v-card class="app-shell-card pa-6 sticky-card summary-card">
+          <div class="text-overline primary--text">ORDER SUMMARY</div>
+          <div class="section-heading mb-5">สรุปคำสั่งซื้อ</div>
           <div class="d-flex justify-space-between mb-3">
             <span class="muted-text">จำนวนสินค้า</span><span>{{ count }} ชิ้น</span>
           </div>
@@ -36,11 +42,16 @@
           <v-btn block large color="primary" class="mt-6" :loading="checkingOut" @click="checkoutDialog = true">
             <v-icon left>mdi-credit-card-outline</v-icon>สั่งซื้อสินค้า
           </v-btn>
-          <div class="caption muted-text mt-3">สินค้าทั้งหมดจะถูกบันทึกเป็น Order เดียว</div>
+          <v-btn block text color="primary" class="mt-2" to="/products">
+            เลือกซื้อสินค้าต่อ
+          </v-btn>
+          <div class="caption muted-text mt-3">
+            ระบบจะสร้าง Order เดียวจากรายการทั้งหมด และตรวจสอบสต็อกก่อนสั่งซื้อ
+          </div>
         </v-card>
       </v-col>
     </v-row>
-    <v-card v-else class="app-shell-card pa-12 text-center">
+    <v-card v-else class="app-shell-card pa-12 text-center empty-state">
       <v-icon size="72" color="secondary">mdi-cart-outline</v-icon>
       <h2 class="mt-4">ยังไม่มีสินค้าในตะกร้า</h2>
       <p class="muted-text">เลือกอุปกรณ์อิเล็กทรอนิกส์ที่สนใจแล้วเพิ่มลงตะกร้า</p>

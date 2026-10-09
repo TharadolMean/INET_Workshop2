@@ -1,7 +1,15 @@
 <template>
-  <v-row justify="center">
-    <v-col cols="12" sm="10" md="7" lg="5">
-      <v-card class="app-shell-card pa-6">
+  <v-row justify="center" align="center" class="auth-shell">
+    <v-col cols="12" md="5" class="d-none d-md-block">
+      <div class="auth-aside pa-8">
+        <v-icon color="primary" size="58">mdi-account-plus-outline</v-icon>
+        <div class="text-overline primary--text mt-8">JOIN ELECTROHUB</div>
+        <h1 class="display-1 font-weight-bold mt-2">สร้างพื้นที่สำหรับการช้อปของคุณ</h1>
+        <p class="muted-text mt-4 mb-0">สมัครสมาชิกเพื่อเก็บสินค้าไว้ในตะกร้าและดำเนินการสั่งซื้อ</p>
+      </div>
+    </v-col>
+    <v-col cols="12" sm="10" md="5" lg="4">
+      <v-card class="app-shell-card pa-6 pa-md-8">
         <div class="mb-6">
           <div class="text-overline primary--text">CREATE ACCOUNT</div>
           <h1 class="page-title">สมัครสมาชิก</h1>
@@ -13,12 +21,12 @@
         </v-alert>
         <v-alert v-if="error" type="error" dense>{{ error }}</v-alert>
         <v-form v-if="!success" ref="form" @submit.prevent="submit">
-          <v-text-field v-model="form.name" label="ชื่อ" :rules="[required]" outlined />
-          <v-text-field v-model="form.email" label="อีเมล" type="email" :rules="[required, email]" outlined />
-          <v-text-field v-model="form.password" label="รหัสผ่าน" type="password" :rules="[required, password]" outlined />
+          <v-text-field v-model="form.name" label="ชื่อ" :rules="[required]" outlined dense />
+          <v-text-field v-model="form.email" label="อีเมล" type="email" :rules="[required, email]" outlined dense />
+          <v-text-field v-model="form.password" label="รหัสผ่าน" type="password" :rules="[required, password]" outlined dense />
           <v-btn block large color="primary" type="submit" :loading="loading">สมัครสมาชิก</v-btn>
         </v-form>
-        <div v-if="!success" class="text-center mt-6">
+        <div v-if="!success" class="text-center mt-6 muted-text">
           มีบัญชีแล้ว? <router-link to="/login">เข้าสู่ระบบ</router-link>
         </div>
       </v-card>
