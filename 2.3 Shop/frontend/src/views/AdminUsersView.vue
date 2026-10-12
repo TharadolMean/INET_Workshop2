@@ -1,43 +1,38 @@
 <template>
   <div class="admin-page">
-    <v-row align="center" class="mb-6">
+    <v-row align="center" class="admin-page-header mb-5">
       <v-col>
         <div class="text-overline primary--text">ADMIN CONSOLE</div>
         <h1 class="page-title">จัดการผู้ใช้</h1>
         <p class="muted-text mb-0">ดูภาพรวม ค้นหา และจัดการสถานะสมาชิก</p>
       </v-col>
-      <v-col cols="auto"><v-btn icon color="secondary" :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
+      <v-col cols="auto"><v-btn icon color="primary" aria-label="โหลดรายชื่อผู้ใช้อีกครั้ง" title="โหลดอีกครั้ง" :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
     </v-row>
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
 
     <v-row class="mb-2">
-      <v-col cols="12" sm="4">
-        <v-card class="app-shell-card user-stat-card user-stat-total" role="button" tabindex="0" @click="setStatusFilter('all')" @keyup.enter="setStatusFilter('all')">
-          <div class="user-stat-icon"><v-icon color="primary">mdi-account-group-outline</v-icon></div>
-          <div><div class="user-stat-label">ผู้ใช้ทั้งหมด</div><div class="user-stat-value">{{ users.length }}</div></div>
+      <v-col cols="6" sm="4">
+        <v-card class="app-shell-card admin-stat-card" :class="{ 'admin-stat-card--selected': statusFilter === 'all' }" role="button" tabindex="0" aria-label="กรองผู้ใช้ทั้งหมด" :aria-pressed="statusFilter === 'all'" @click="setStatusFilter('all')" @keyup.enter="setStatusFilter('all')">
+          <div class="admin-stat-icon"><v-icon color="primary">mdi-account-group-outline</v-icon></div>
+          <div><div class="admin-stat-label">ผู้ใช้ทั้งหมด</div><div class="admin-stat-value">{{ users.length }}</div></div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="4">
-        <v-card class="app-shell-card user-stat-card user-stat-pending" role="button" tabindex="0" @click="setStatusFilter('pending')" @keyup.enter="setStatusFilter('pending')">
-          <div class="user-stat-icon"><v-icon color="warning">mdi-account-clock-outline</v-icon></div>
-          <div><div class="user-stat-label">รออนุมัติ</div><div class="user-stat-value">{{ pendingCount }}</div></div>
+      <v-col cols="6" sm="4">
+        <v-card class="app-shell-card admin-stat-card" :class="{ 'admin-stat-card--selected': statusFilter === 'pending' }" role="button" tabindex="0" aria-label="กรองผู้ใช้ที่รออนุมัติ" :aria-pressed="statusFilter === 'pending'" @click="setStatusFilter('pending')" @keyup.enter="setStatusFilter('pending')">
+          <div class="admin-stat-icon"><v-icon color="warning">mdi-account-clock-outline</v-icon></div>
+          <div><div class="admin-stat-label">รออนุมัติ</div><div class="admin-stat-value">{{ pendingCount }}</div></div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="4">
-        <v-card class="app-shell-card user-stat-card user-stat-approved" role="button" tabindex="0" @click="setStatusFilter('approved')" @keyup.enter="setStatusFilter('approved')">
-          <div class="user-stat-icon"><v-icon color="success">mdi-account-check-outline</v-icon></div>
-          <div><div class="user-stat-label">อนุมัติแล้ว</div><div class="user-stat-value">{{ approvedCount }}</div></div>
+      <v-col cols="6" sm="4">
+        <v-card class="app-shell-card admin-stat-card" :class="{ 'admin-stat-card--selected': statusFilter === 'approved' }" role="button" tabindex="0" aria-label="กรองผู้ใช้ที่อนุมัติแล้ว" :aria-pressed="statusFilter === 'approved'" @click="setStatusFilter('approved')" @keyup.enter="setStatusFilter('approved')">
+          <div class="admin-stat-icon"><v-icon color="success">mdi-account-check-outline</v-icon></div>
+          <div><div class="admin-stat-label">อนุมัติแล้ว</div><div class="admin-stat-value">{{ approvedCount }}</div></div>
         </v-card>
       </v-col>
     </v-row>
 
     <v-card class="app-shell-card admin-table-card">
       <div class="user-table-toolbar pa-4">
-        <div class="d-flex flex-wrap align-center user-filter-group">
-          <v-chip :color="statusFilter === 'all' ? 'primary' : undefined" :outlined="statusFilter !== 'all'" class="mr-2 mb-2" @click="setStatusFilter('all')">ทั้งหมด</v-chip>
-          <v-chip :color="statusFilter === 'pending' ? 'warning' : undefined" :outlined="statusFilter !== 'pending'" class="mr-2 mb-2" @click="setStatusFilter('pending')">รออนุมัติ</v-chip>
-          <v-chip :color="statusFilter === 'approved' ? 'success' : undefined" :outlined="statusFilter !== 'approved'" class="mr-2 mb-2" @click="setStatusFilter('approved')">อนุมัติแล้ว</v-chip>
-        </div>
         <v-text-field
           v-model="search"
           class="user-search"
@@ -49,11 +44,11 @@
           hide-details
         />
       </div>
-      <v-data-table :headers="responsiveHeaders" :items="filteredUsers" :loading="loading" loading-text="กำลังโหลดผู้ใช้งาน..." :no-data-text="emptyText">
+      <v-data-table :headers="responsiveHeaders" :items="filteredUsers" :loading="loading" loading-text="กำลังโหลดผู้ใช้งาน..." :no-data-text="emptyText" class="admin-data-table">
         <template v-slot:item.isApproved="{ item }"><v-chip small :color="item.isApproved ? 'success' : 'warning'">{{ item.isApproved ? 'อนุมัติแล้ว' : 'รออนุมัติ' }}</v-chip></template>
         <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
         <template v-slot:item.actions="{ item }">
-          <v-btn v-if="!item.isApproved" small color="primary" :loading="approving === item._id" @click="approve(item)">
+          <v-btn v-if="!item.isApproved" small color="primary" :loading="approving === item._id" :aria-label="`อนุมัติผู้ใช้ ${item.name}`" @click="approve(item)">
             <v-icon left small>mdi-check</v-icon>อนุมัติ
           </v-btn>
           <span v-else class="muted-text">เรียบร้อย</span>

@@ -1,14 +1,17 @@
 <template>
   <v-app>
-    <app-navbar />
-    <v-main>
-      <v-container fluid class="py-8">
-        <transition name="fade" mode="out-in">
-          <router-view />
-        </transition>
-      </v-container>
-    </v-main>
-    <app-footer />
+    <router-view v-if="isAdminRoute" />
+    <template v-else>
+      <app-navbar />
+      <v-main>
+        <v-container fluid class="py-8">
+          <transition name="fade" mode="out-in">
+            <router-view />
+          </transition>
+        </v-container>
+      </v-main>
+      <app-footer />
+    </template>
     <v-snackbar v-model="expiredMessage" color="warning" top>
       เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง
     </v-snackbar>
@@ -23,6 +26,11 @@ export default {
   name: 'App',
   components: { AppNavbar, AppFooter },
   data: () => ({ expiredMessage: false }),
+  computed: {
+    isAdminRoute() {
+      return this.$route.matched.some((record) => record.meta && record.meta.adminLayout);
+    },
+  },
   created() {
     window.addEventListener('shop-auth-expired', this.handleExpired);
   },

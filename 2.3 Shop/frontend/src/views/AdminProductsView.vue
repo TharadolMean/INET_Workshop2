@@ -1,35 +1,35 @@
 <template>
   <div class="admin-page">
-    <v-row align="center" class="mb-6">
+    <v-row align="center" class="admin-page-header mb-5">
       <v-col>
         <div class="text-overline primary--text">ADMIN CONSOLE</div>
         <h1 class="page-title">จัดการสินค้า</h1>
         <p class="muted-text mb-0">ดูแลรายการอุปกรณ์อิเล็กทรอนิกส์และสต็อก</p>
       </v-col>
-      <v-col cols="auto"><v-btn color="primary" @click="openCreate"><v-icon left>mdi-plus</v-icon>เพิ่มสินค้า</v-btn></v-col>
+      <v-col cols="auto"><v-btn color="primary" class="admin-primary-action" @click="openCreate"><v-icon left>mdi-plus</v-icon>เพิ่มสินค้า</v-btn></v-col>
     </v-row>
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
     <v-row class="mb-2">
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="app-shell-card admin-stat-card stat-products" :class="{ 'admin-stat-card--selected': stockFilter === 'all' }" role="button" tabindex="0" @click="setStockFilter('all')" @keyup.enter="setStockFilter('all')">
+      <v-col cols="6" sm="6" md="3">
+        <v-card class="app-shell-card admin-stat-card stat-products" :class="{ 'admin-stat-card--selected': stockFilter === 'all' }" role="button" tabindex="0" :aria-pressed="stockFilter === 'all'" @click="setStockFilter('all')" @keyup.enter="setStockFilter('all')">
           <div class="admin-stat-icon"><v-icon color="primary">mdi-package-variant-closed</v-icon></div>
           <div><div class="admin-stat-label">สินค้าทั้งหมด</div><div class="admin-stat-value">{{ products.length }}</div></div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="app-shell-card admin-stat-card stat-normal" :class="{ 'admin-stat-card--selected': stockFilter === 'normal' }" role="button" tabindex="0" @click="setStockFilter('normal')" @keyup.enter="setStockFilter('normal')">
+      <v-col cols="6" sm="6" md="3">
+        <v-card class="app-shell-card admin-stat-card stat-normal" :class="{ 'admin-stat-card--selected': stockFilter === 'normal' }" role="button" tabindex="0" :aria-pressed="stockFilter === 'normal'" @click="setStockFilter('normal')" @keyup.enter="setStockFilter('normal')">
           <div class="admin-stat-icon"><v-icon color="success">mdi-check-circle-outline</v-icon></div>
           <div><div class="admin-stat-label">สต็อกปกติ (&gt; {{ lowStockThreshold }})</div><div class="admin-stat-value">{{ normalStockCount }}</div></div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="app-shell-card admin-stat-card stat-low" :class="{ 'admin-stat-card--selected': stockFilter === 'low' }" role="button" tabindex="0" @click="setStockFilter('low')" @keyup.enter="setStockFilter('low')">
+      <v-col cols="6" sm="6" md="3">
+        <v-card class="app-shell-card admin-stat-card stat-low" :class="{ 'admin-stat-card--selected': stockFilter === 'low' }" role="button" tabindex="0" :aria-pressed="stockFilter === 'low'" @click="setStockFilter('low')" @keyup.enter="setStockFilter('low')">
           <div class="admin-stat-icon"><v-icon color="warning">mdi-alert-circle-outline</v-icon></div>
           <div><div class="admin-stat-label">ใกล้หมด (1–{{ lowStockThreshold }})</div><div class="admin-stat-value">{{ lowStockProducts.length }}</div></div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="app-shell-card admin-stat-card stat-out" :class="{ 'admin-stat-card--selected': stockFilter === 'out' }" role="button" tabindex="0" @click="setStockFilter('out')" @keyup.enter="setStockFilter('out')">
+      <v-col cols="6" sm="6" md="3">
+        <v-card class="app-shell-card admin-stat-card stat-out" :class="{ 'admin-stat-card--selected': stockFilter === 'out' }" role="button" tabindex="0" :aria-pressed="stockFilter === 'out'" @click="setStockFilter('out')" @keyup.enter="setStockFilter('out')">
           <div class="admin-stat-icon"><v-icon color="error">mdi-close-circle-outline</v-icon></div>
           <div><div class="admin-stat-label">หมดสต็อก</div><div class="admin-stat-value">{{ outOfStockCount }}</div></div>
         </v-card>
@@ -59,28 +59,32 @@
           hide-details
         />
       </div>
-      <v-data-table :headers="responsiveHeaders" :items="filteredProducts" :loading="loading" loading-text="กำลังโหลดสินค้า..." :no-data-text="productEmptyText">
+      <v-data-table :headers="responsiveHeaders" :items="filteredProducts" :loading="loading" loading-text="กำลังโหลดสินค้า..." :no-data-text="productEmptyText" class="admin-data-table">
+        <template v-slot:item.name="{ item }">
+          <div class="admin-product-name">{{ item.name }}</div>
+          <div v-if="item.description" class="admin-product-description" :title="item.description">{{ item.description }}</div>
+        </template>
         <template v-slot:item.category="{ item }">{{ categoryName(item) }}</template>
         <template v-slot:item.price="{ item }">{{ formatPrice(item.price) }} บาท</template>
         <template v-slot:item.stock="{ item }">
-          <v-chip small :color="item.stock < 1 ? 'error' : item.stock <= lowStockThreshold ? 'warning' : 'success'">{{ item.stock }}</v-chip>
+          <v-chip small :color="item.stock < 1 ? 'error' : item.stock <= lowStockThreshold ? 'warning' : 'success'">{{ stockLabel(item.stock) }}</v-chip>
         </template>
         <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
         <template v-slot:item.actions="{ item }">
-          <v-btn icon small color="secondary" @click="openEdit(item)"><v-icon>mdi-pencil-outline</v-icon></v-btn>
-          <v-btn icon small color="error" @click="askDelete(item)"><v-icon>mdi-delete-outline</v-icon></v-btn>
+          <v-btn icon small color="primary" :aria-label="`แก้ไขสินค้า ${item.name}`" title="แก้ไขสินค้า" @click="openEdit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
+          <v-btn icon small color="error" :aria-label="`ลบสินค้า ${item.name}`" title="ลบสินค้า" @click="askDelete(item)"><v-icon small>mdi-delete-outline</v-icon></v-btn>
         </template>
       </v-data-table>
     </v-card>
 
     <v-dialog v-model="dialog" max-width="620">
-      <v-card class="app-shell-card">
+      <v-card class="app-shell-card admin-dialog-card">
         <v-card-title>{{ editing ? 'แก้ไขสินค้า' : 'เพิ่มสินค้าใหม่' }}</v-card-title>
         <v-card-text><product-form :value="editing || undefined" :categories="categories" :loading="saving" @submit="save" @cancel="dialog = false" /></v-card-text>
       </v-card>
     </v-dialog>
     <v-dialog v-model="deleteDialog" max-width="430">
-      <v-card class="app-shell-card">
+      <v-card class="app-shell-card admin-dialog-card">
         <v-card-title>ยืนยันการลบสินค้า</v-card-title>
         <v-card-text>ต้องการลบ <strong>{{ deleting && deleting.name }}</strong> ใช่หรือไม่? Order ที่ผูกกับสินค้านี้จะถูกลบตาม Backend เดิม</v-card-text>
         <v-card-actions><v-spacer /><v-btn text @click="deleteDialog = false">ยกเลิก</v-btn><v-btn color="error" :loading="deletingNow" @click="remove">ลบสินค้า</v-btn></v-card-actions>
@@ -116,7 +120,6 @@ export default {
     headers: [
       { text: 'สินค้า', value: 'name' },
       { text: 'หมวดหมู่', value: 'category', sortable: false },
-      { text: 'รายละเอียด', value: 'description', sortable: false },
       { text: 'ราคา', value: 'price' },
       { text: 'สต็อก', value: 'stock' },
       { text: 'สร้างเมื่อ', value: 'createdAt' },
@@ -145,7 +148,7 @@ export default {
     lowStockSummary() {
       const names = this.lowStockProducts.slice(0, 3).map((product) => product.name).join(', ');
       const remaining = this.lowStockProducts.length - 3;
-      return `${names}${remaining > 0 ? ` และอีก ${remaining} รายการ` : ''} · เหลือ 1–${this.lowStockThreshold} ชิ้น`;
+      return `${names}${remaining > 0 ? ` และอีก ${remaining} รายการ` : ''}`;
     },
     normalStockCount() {
       return this.products.filter((product) => Number(product.stock) > this.lowStockThreshold).length;
@@ -179,6 +182,11 @@ export default {
   methods: {
     setStockFilter(filter) {
       this.stockFilter = filter;
+    },
+    stockLabel(stock) {
+      if (Number(stock) <= 0) return 'หมดสต็อก';
+      if (Number(stock) <= this.lowStockThreshold) return `ใกล้หมด · ${stock}`;
+      return `ปกติ · ${stock}`;
     },
     async load() {
       this.error = '';

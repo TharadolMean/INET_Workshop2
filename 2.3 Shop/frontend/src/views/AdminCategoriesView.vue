@@ -1,13 +1,13 @@
 <template>
   <div class="admin-page">
-    <v-row align="center" class="mb-6">
+    <v-row align="center" class="admin-page-header mb-5">
       <v-col>
         <div class="text-overline primary--text">ADMIN CONSOLE</div>
         <h1 class="page-title">จัดการหมวดหมู่</h1>
         <p class="muted-text mb-0">สร้างและจัดการหมวดหมู่สำหรับสินค้า</p>
       </v-col>
       <v-col cols="auto">
-        <v-btn color="primary" @click="openCreate">
+        <v-btn color="primary" class="admin-primary-action" @click="openCreate">
           <v-icon left>mdi-plus</v-icon>เพิ่มหมวดหมู่
         </v-btn>
       </v-col>
@@ -15,20 +15,20 @@
 
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
     <v-row class="mb-2">
-      <v-col cols="12" sm="4">
-        <v-card class="app-shell-card admin-stat-card stat-products" :class="{ 'admin-stat-card--selected': statusFilter === 'all' }" role="button" tabindex="0" @click="setStatusFilter('all')" @keyup.enter="setStatusFilter('all')">
+      <v-col cols="6" sm="4">
+        <v-card class="app-shell-card admin-stat-card stat-products" :class="{ 'admin-stat-card--selected': statusFilter === 'all' }" role="button" tabindex="0" :aria-pressed="statusFilter === 'all'" @click="setStatusFilter('all')" @keyup.enter="setStatusFilter('all')">
           <div class="admin-stat-icon"><v-icon color="primary">mdi-shape-outline</v-icon></div>
           <div><div class="admin-stat-label">หมวดหมู่ทั้งหมด</div><div class="admin-stat-value">{{ categories.length }}</div></div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="4">
-        <v-card class="app-shell-card admin-stat-card stat-normal" :class="{ 'admin-stat-card--selected': statusFilter === 'active' }" role="button" tabindex="0" @click="setStatusFilter('active')" @keyup.enter="setStatusFilter('active')">
+      <v-col cols="6" sm="4">
+        <v-card class="app-shell-card admin-stat-card stat-normal" :class="{ 'admin-stat-card--selected': statusFilter === 'active' }" role="button" tabindex="0" :aria-pressed="statusFilter === 'active'" @click="setStatusFilter('active')" @keyup.enter="setStatusFilter('active')">
           <div class="admin-stat-icon"><v-icon color="success">mdi-eye-outline</v-icon></div>
           <div><div class="admin-stat-label">เปิดใช้งาน</div><div class="admin-stat-value">{{ activeCount }}</div></div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="4">
-        <v-card class="app-shell-card admin-stat-card stat-out" :class="{ 'admin-stat-card--selected': statusFilter === 'inactive' }" role="button" tabindex="0" @click="setStatusFilter('inactive')" @keyup.enter="setStatusFilter('inactive')">
+      <v-col cols="6" sm="4">
+        <v-card class="app-shell-card admin-stat-card stat-out" :class="{ 'admin-stat-card--selected': statusFilter === 'inactive' }" role="button" tabindex="0" :aria-pressed="statusFilter === 'inactive'" @click="setStatusFilter('inactive')" @keyup.enter="setStatusFilter('inactive')">
           <div class="admin-stat-icon"><v-icon color="secondary">mdi-eye-off-outline</v-icon></div>
           <div><div class="admin-stat-label">ปิดใช้งาน</div><div class="admin-stat-value">{{ inactiveCount }}</div></div>
         </v-card>
@@ -36,28 +36,28 @@
     </v-row>
 
     <v-card class="app-shell-card admin-table-card">
-      <v-data-table :headers="responsiveHeaders" :items="filteredCategories" :loading="loading" :no-data-text="categoryEmptyText">
+      <v-data-table :headers="responsiveHeaders" :items="filteredCategories" :loading="loading" :no-data-text="categoryEmptyText" class="admin-data-table">
         <template v-slot:item.isActive="{ item }">
           <v-chip small :color="item.isActive ? 'success' : 'grey'">
             {{ item.isActive ? 'ใช้งานอยู่' : 'ปิดใช้งาน' }}
           </v-chip>
         </template>
         <template v-slot:item.actions="{ item }">
-          <v-btn icon small color="secondary" @click="openEdit(item)">
-            <v-icon>mdi-pencil-outline</v-icon>
+          <v-btn icon small color="primary" :aria-label="`แก้ไขหมวดหมู่ ${item.name}`" title="แก้ไขหมวดหมู่" @click="openEdit(item)">
+            <v-icon small>mdi-pencil-outline</v-icon>
           </v-btn>
-          <v-btn icon small :color="item.isActive ? 'warning' : 'success'" @click="toggle(item)">
-            <v-icon>{{ item.isActive ? 'mdi-eye-off-outline' : 'mdi-eye-outline' }}</v-icon>
+          <v-btn icon small :color="item.isActive ? 'warning' : 'success'" :aria-label="item.isActive ? `ปิดใช้งานหมวดหมู่ ${item.name}` : `เปิดใช้งานหมวดหมู่ ${item.name}`" :title="item.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'" @click="toggle(item)">
+            <v-icon small>{{ item.isActive ? 'mdi-eye-off-outline' : 'mdi-eye-outline' }}</v-icon>
           </v-btn>
-          <v-btn icon small color="error" @click="remove(item)">
-            <v-icon>mdi-delete-outline</v-icon>
+          <v-btn icon small color="error" :aria-label="`ลบหมวดหมู่ ${item.name}`" title="ลบหมวดหมู่" @click="remove(item)">
+            <v-icon small>mdi-delete-outline</v-icon>
           </v-btn>
         </template>
       </v-data-table>
     </v-card>
 
     <v-dialog v-model="dialog" max-width="480">
-      <v-card class="app-shell-card">
+      <v-card class="app-shell-card admin-dialog-card">
         <v-card-title>{{ editing ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่' }}</v-card-title>
         <v-card-text>
           <v-form ref="form" @submit.prevent="save">

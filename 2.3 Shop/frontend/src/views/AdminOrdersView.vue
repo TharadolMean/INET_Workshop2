@@ -1,12 +1,12 @@
 <template>
   <div class="admin-page">
-    <v-row align="center" class="mb-6">
+    <v-row align="center" class="admin-page-header mb-5">
       <v-col>
         <div class="text-overline primary--text">ADMIN CONSOLE</div>
         <h1 class="page-title">จัดการคำสั่งซื้อ</h1>
         <p class="muted-text mb-0">ดูรายการสั่งซื้อจากลูกค้าทั้งหมด</p>
       </v-col>
-      <v-col cols="auto"><v-btn icon color="secondary" :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
+      <v-col cols="auto"><v-btn icon color="primary" aria-label="โหลดคำสั่งซื้ออีกครั้ง" title="โหลดอีกครั้ง" :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
     </v-row>
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
     <v-card class="app-shell-card admin-table-card">
@@ -34,16 +34,14 @@
           hide-details
         />
       </div>
-      <v-data-table :headers="responsiveHeaders" :items="filteredOrders" :loading="loading" loading-text="กำลังโหลดคำสั่งซื้อ..." :no-data-text="orderEmptyText">
-        <template v-slot:item._id="{ item }"><code>{{ shortId(item._id) }}</code></template>
-        <template v-slot:item.product="{ item }">{{ productSummary(item) }}</template>
+      <v-data-table :headers="responsiveHeaders" :items="filteredOrders" :loading="loading" loading-text="กำลังโหลดคำสั่งซื้อ..." :no-data-text="orderEmptyText" class="admin-data-table">
+        <template v-slot:item._id="{ item }"><code class="admin-order-id" :title="item._id">#{{ shortId(item._id) }}</code></template>
         <template v-slot:item.user="{ item }">{{ userName(item) }}</template>
-        <template v-slot:item.quantity="{ item }">{{ totalQuantity(item) }}</template>
-        <template v-slot:item.unitPrice="{ item }">{{ priceSummary(item) }}</template>
+        <template v-slot:item.quantity="{ item }">{{ totalQuantity(item) }} ชิ้น</template>
         <template v-slot:item.totalPrice="{ item }"><strong>{{ formatPrice(item.totalPrice) }} บาท</strong></template>
         <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
         <template v-slot:item.actions="{ item }">
-          <v-btn small text color="primary" @click="viewDetails(item)">
+          <v-btn small text color="primary" aria-label="ดูรายละเอียดคำสั่งซื้อ" @click="viewDetails(item)">
             <v-icon left small>mdi-eye-outline</v-icon>ดูรายละเอียด
           </v-btn>
         </template>
@@ -51,7 +49,7 @@
     </v-card>
 
     <v-dialog v-model="detailsDialog" max-width="760">
-      <v-card v-if="selectedOrder" class="app-shell-card order-details-card">
+      <v-card v-if="selectedOrder" class="app-shell-card admin-dialog-card order-details-card">
         <v-card-title class="order-details-header pa-6">
           <div>
             <div class="text-overline primary--text">ORDER DETAILS</div>
@@ -128,22 +126,20 @@ export default {
     ],
     headers: [
       { text: 'Order ID', value: '_id' },
-      { text: 'สินค้า', value: 'product' },
       { text: 'ลูกค้า', value: 'user' },
-      { text: 'จำนวน', value: 'quantity' },
-      { text: 'ราคาต่อหน่วย', value: 'unitPrice' },
-      { text: 'ยอดรวม', value: 'totalPrice' },
-      { text: 'วันที่สร้าง', value: 'createdAt' },
+      { text: 'จำนวนสินค้า', value: 'quantity', align: 'end' },
+      { text: 'ยอดรวม', value: 'totalPrice', align: 'end' },
+      { text: 'วันที่สร้าง', value: 'createdAt', width: '170px' },
       { text: 'รายละเอียด', value: 'actions', sortable: false, align: 'center' },
     ],
   }),
   computed: {
     responsiveHeaders() {
       if (this.$vuetify.breakpoint.xsOnly) {
-        return this.headers.filter((header) => !['user', 'quantity', 'unitPrice', 'createdAt'].includes(header.value));
+        return this.headers.filter((header) => !['user', 'createdAt'].includes(header.value));
       }
       if (this.$vuetify.breakpoint.smAndDown) {
-        return this.headers.filter((header) => !['unitPrice', 'createdAt'].includes(header.value));
+        return this.headers.filter((header) => header.value !== 'createdAt');
       }
       return this.headers;
     },
@@ -216,11 +212,6 @@ export default {
     viewDetails(order) {
       this.selectedOrder = order;
       this.detailsDialog = true;
-    },
-    priceSummary(order) {
-      const items = this.orderItems(order);
-      if (items.length > 1) return items.map((item) => `${this.formatPrice(item.unitPrice)} บาท`).join(' + ');
-      return items.length ? `${this.formatPrice(items[0].unitPrice)} บาท` : '-';
     },
     userName(order) {
       return order.user?.name || order.user?.email || 'ผู้ใช้ไม่พบ';
