@@ -1,13 +1,16 @@
 <template>
   <div>
     <v-app-bar app color="surface" elevate-on-scroll>
-      <v-app-bar-nav-icon class="d-md-none" @click="drawer = !drawer" />
-      <v-toolbar-title class="font-weight-bold">
-        <v-icon color="primary" left>mdi-lightning-bolt</v-icon>
-        ElectroHub
+      <v-app-bar-nav-icon class="d-lg-none" @click="drawer = !drawer" />
+      <v-toolbar-title class="font-weight-bold d-flex align-center">
+        <v-avatar size="34" class="brand-mark mr-2">
+          <v-icon color="white" small>mdi-lightning-bolt</v-icon>
+        </v-avatar>
+        <span class="brand-name">ElectroHub</span>
       </v-toolbar-title>
       <v-spacer />
       <v-text-field
+        v-if="!isAdmin"
         v-model="searchTerm"
         class="nav-search d-none d-lg-flex mr-4"
         label="ค้นหาสินค้า"
@@ -20,14 +23,17 @@
         @keyup.enter="searchProducts"
         @click:append="searchProducts"
       />
-      <div class="d-none d-md-flex align-center">
-        <v-btn text class="nav-link" to="/products">สินค้า</v-btn>
-        <v-btn text class="nav-link" to="/cart">
-          <v-badge :content="cartCount" :value="cartCount" color="secondary" overlap>
-            <v-icon>mdi-cart-outline</v-icon>
-          </v-badge>
-          <span class="ml-2">ตะกร้า</span>
-        </v-btn>
+      <div class="d-none d-lg-flex align-center">
+        <template v-if="!isAdmin">
+          <v-btn text class="nav-link" to="/products">สินค้า</v-btn>
+          <v-btn text class="nav-link" to="/cart">
+            <v-badge :content="cartCount" :value="cartCount" color="secondary" overlap>
+              <v-icon>mdi-cart-outline</v-icon>
+            </v-badge>
+            <span class="ml-2">ตะกร้า</span>
+          </v-btn>
+        </template>
+        <v-btn v-if="isAuthenticated && !isAdmin" text class="nav-link" to="/my-orders">คำสั่งซื้อของฉัน</v-btn>
         <div v-if="isAdmin" class="admin-nav-links d-flex align-center">
           <v-btn text class="nav-link" to="/admin/products">จัดการสินค้า</v-btn>
           <v-btn text class="nav-link" to="/admin/categories">หมวดหมู่</v-btn>
@@ -53,17 +59,23 @@
           </v-list-item-content>
         </v-list-item>
         <v-divider />
-        <v-list-item to="/products" @click="drawer = false">
-          <v-list-item-icon><v-icon>mdi-storefront-outline</v-icon></v-list-item-icon>
-          <v-list-item-title>สินค้า</v-list-item-title>
-        </v-list-item>
-        <v-list-item @click="searchProducts">
-          <v-list-item-icon><v-icon>mdi-magnify</v-icon></v-list-item-icon>
-          <v-list-item-title>ค้นหาสินค้า</v-list-item-title>
-        </v-list-item>
-        <v-list-item to="/cart" @click="drawer = false">
-          <v-list-item-icon><v-icon>mdi-cart-outline</v-icon></v-list-item-icon>
-          <v-list-item-title>ตะกร้าสินค้า ({{ cartCount }})</v-list-item-title>
+        <template v-if="!isAdmin">
+          <v-list-item to="/products" @click="drawer = false">
+            <v-list-item-icon><v-icon>mdi-storefront-outline</v-icon></v-list-item-icon>
+            <v-list-item-title>สินค้า</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="searchProducts">
+            <v-list-item-icon><v-icon>mdi-magnify</v-icon></v-list-item-icon>
+            <v-list-item-title>ค้นหาสินค้า</v-list-item-title>
+          </v-list-item>
+          <v-list-item to="/cart" @click="drawer = false">
+            <v-list-item-icon><v-icon>mdi-cart-outline</v-icon></v-list-item-icon>
+            <v-list-item-title>ตะกร้าสินค้า ({{ cartCount }})</v-list-item-title>
+          </v-list-item>
+        </template>
+        <v-list-item v-if="isAuthenticated && !isAdmin" to="/my-orders" @click="drawer = false">
+          <v-list-item-icon><v-icon>mdi-clipboard-list-outline</v-icon></v-list-item-icon>
+          <v-list-item-title>คำสั่งซื้อของฉัน</v-list-item-title>
         </v-list-item>
         <template v-if="isAdmin">
           <v-subheader>การจัดการ</v-subheader>

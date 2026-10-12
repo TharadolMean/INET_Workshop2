@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page">
     <v-row align="center" class="mb-6">
       <v-col>
         <div class="text-overline primary--text">ADMIN CONSOLE</div>
@@ -14,8 +14,29 @@
     </v-row>
 
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
+    <v-row class="mb-2">
+      <v-col cols="12" sm="4">
+        <v-card class="app-shell-card admin-stat-card stat-products" :class="{ 'admin-stat-card--selected': statusFilter === 'all' }" role="button" tabindex="0" @click="setStatusFilter('all')" @keyup.enter="setStatusFilter('all')">
+          <div class="admin-stat-icon"><v-icon color="primary">mdi-shape-outline</v-icon></div>
+          <div><div class="admin-stat-label">หมวดหมู่ทั้งหมด</div><div class="admin-stat-value">{{ categories.length }}</div></div>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="4">
+        <v-card class="app-shell-card admin-stat-card stat-normal" :class="{ 'admin-stat-card--selected': statusFilter === 'active' }" role="button" tabindex="0" @click="setStatusFilter('active')" @keyup.enter="setStatusFilter('active')">
+          <div class="admin-stat-icon"><v-icon color="success">mdi-eye-outline</v-icon></div>
+          <div><div class="admin-stat-label">เปิดใช้งาน</div><div class="admin-stat-value">{{ activeCount }}</div></div>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="4">
+        <v-card class="app-shell-card admin-stat-card stat-out" :class="{ 'admin-stat-card--selected': statusFilter === 'inactive' }" role="button" tabindex="0" @click="setStatusFilter('inactive')" @keyup.enter="setStatusFilter('inactive')">
+          <div class="admin-stat-icon"><v-icon color="secondary">mdi-eye-off-outline</v-icon></div>
+          <div><div class="admin-stat-label">ปิดใช้งาน</div><div class="admin-stat-value">{{ inactiveCount }}</div></div>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <v-card class="app-shell-card admin-table-card">
-      <v-data-table :headers="headers" :items="categories" :loading="loading" no-data-text="ยังไม่มีหมวดหมู่">
+      <v-data-table :headers="responsiveHeaders" :items="filteredCategories" :loading="loading" :no-data-text="categoryEmptyText">
         <template v-slot:item.isActive="{ item }">
           <v-chip small :color="item.isActive ? 'success' : 'grey'">
             {{ item.isActive ? 'ใช้งานอยู่' : 'ปิดใช้งาน' }}
@@ -64,6 +85,7 @@ export default {
     categories: [],
     loading: false,
     saving: false,
+    statusFilter: 'all',
     error: '',
     dialog: false,
     editing: null,
@@ -78,10 +100,35 @@ export default {
       { text: 'การจัดการ', value: 'actions', sortable: false, align: 'right' },
     ],
   }),
+  computed: {
+    responsiveHeaders() {
+      if (this.$vuetify.breakpoint.xsOnly) return this.headers.filter((header) => header.value !== 'slug');
+      return this.headers;
+    },
+    activeCount() {
+      return this.categories.filter((category) => category.isActive).length;
+    },
+    inactiveCount() {
+      return this.categories.filter((category) => !category.isActive).length;
+    },
+    filteredCategories() {
+      if (this.statusFilter === 'active') return this.categories.filter((category) => category.isActive);
+      if (this.statusFilter === 'inactive') return this.categories.filter((category) => !category.isActive);
+      return this.categories;
+    },
+    categoryEmptyText() {
+      if (this.statusFilter === 'active') return 'ไม่มีหมวดหมู่ที่เปิดใช้งาน';
+      if (this.statusFilter === 'inactive') return 'ไม่มีหมวดหมู่ที่ปิดใช้งาน';
+      return 'ยังไม่มีหมวดหมู่';
+    },
+  },
   created() {
     this.load();
   },
   methods: {
+    setStatusFilter(status) {
+      this.statusFilter = status;
+    },
     async load() {
       this.loading = true;
       this.error = '';

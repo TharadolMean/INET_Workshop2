@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="admin-page">
     <v-row align="center" class="mb-6">
       <v-col>
         <div class="text-overline primary--text">ADMIN CONSOLE</div>
@@ -9,12 +9,61 @@
       <v-col cols="auto"><v-btn color="primary" @click="openCreate"><v-icon left>mdi-plus</v-icon>เพิ่มสินค้า</v-btn></v-col>
     </v-row>
     <v-alert v-if="error" type="error" outlined>{{ error }}</v-alert>
+    <v-row class="mb-2">
+      <v-col cols="12" sm="6" md="3">
+        <v-card class="app-shell-card admin-stat-card stat-products" :class="{ 'admin-stat-card--selected': stockFilter === 'all' }" role="button" tabindex="0" @click="setStockFilter('all')" @keyup.enter="setStockFilter('all')">
+          <div class="admin-stat-icon"><v-icon color="primary">mdi-package-variant-closed</v-icon></div>
+          <div><div class="admin-stat-label">สินค้าทั้งหมด</div><div class="admin-stat-value">{{ products.length }}</div></div>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-card class="app-shell-card admin-stat-card stat-normal" :class="{ 'admin-stat-card--selected': stockFilter === 'normal' }" role="button" tabindex="0" @click="setStockFilter('normal')" @keyup.enter="setStockFilter('normal')">
+          <div class="admin-stat-icon"><v-icon color="success">mdi-check-circle-outline</v-icon></div>
+          <div><div class="admin-stat-label">สต็อกปกติ (&gt; {{ lowStockThreshold }})</div><div class="admin-stat-value">{{ normalStockCount }}</div></div>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-card class="app-shell-card admin-stat-card stat-low" :class="{ 'admin-stat-card--selected': stockFilter === 'low' }" role="button" tabindex="0" @click="setStockFilter('low')" @keyup.enter="setStockFilter('low')">
+          <div class="admin-stat-icon"><v-icon color="warning">mdi-alert-circle-outline</v-icon></div>
+          <div><div class="admin-stat-label">ใกล้หมด (1–{{ lowStockThreshold }})</div><div class="admin-stat-value">{{ lowStockProducts.length }}</div></div>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-card class="app-shell-card admin-stat-card stat-out" :class="{ 'admin-stat-card--selected': stockFilter === 'out' }" role="button" tabindex="0" @click="setStockFilter('out')" @keyup.enter="setStockFilter('out')">
+          <div class="admin-stat-icon"><v-icon color="error">mdi-close-circle-outline</v-icon></div>
+          <div><div class="admin-stat-label">หมดสต็อก</div><div class="admin-stat-value">{{ outOfStockCount }}</div></div>
+        </v-card>
+      </v-col>
+    </v-row>
+    <v-alert v-if="lowStockProducts.length" type="warning" outlined class="low-stock-alert mb-5">
+      <div class="d-flex flex-wrap align-center justify-space-between low-stock-alert-content">
+        <div>
+          <strong>แจ้งเตือนสต็อกต่ำ</strong>
+          <span class="ml-2">{{ lowStockSummary }}</span>
+        </div>
+        <v-btn small outlined color="warning" @click="setStockFilter('low')">
+          ดูสินค้าใกล้หมด
+        </v-btn>
+      </div>
+    </v-alert>
     <v-card class="app-shell-card admin-table-card">
-      <v-data-table :headers="headers" :items="products" :loading="loading" loading-text="กำลังโหลดสินค้า..." no-data-text="ยังไม่มีสินค้า">
+      <div class="admin-list-toolbar pa-4">
+        <v-text-field
+          v-model="search"
+          class="admin-list-search"
+          label="ค้นหาชื่อสินค้า หรือรายละเอียด"
+          prepend-inner-icon="mdi-magnify"
+          clearable
+          outlined
+          dense
+          hide-details
+        />
+      </div>
+      <v-data-table :headers="responsiveHeaders" :items="filteredProducts" :loading="loading" loading-text="กำลังโหลดสินค้า..." :no-data-text="productEmptyText">
         <template v-slot:item.category="{ item }">{{ categoryName(item) }}</template>
         <template v-slot:item.price="{ item }">{{ formatPrice(item.price) }} บาท</template>
         <template v-slot:item.stock="{ item }">
-          <v-chip small :color="item.stock > 0 ? 'success' : 'error'">{{ item.stock }}</v-chip>
+          <v-chip small :color="item.stock < 1 ? 'error' : item.stock <= lowStockThreshold ? 'warning' : 'success'">{{ item.stock }}</v-chip>
         </template>
         <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
         <template v-slot:item.actions="{ item }">
@@ -56,6 +105,9 @@ export default {
     deleteDialog: false,
     saving: false,
     deletingNow: false,
+    search: '',
+    stockFilter: 'all',
+    lowStockThreshold: 5,
     error: '',
     snackbar: false,
     snackbarText: '',
@@ -72,17 +124,62 @@ export default {
     ],
   }),
   computed: {
+    responsiveHeaders() {
+      if (this.$vuetify.breakpoint.xsOnly) {
+        return this.headers.filter((header) => !['category', 'description', 'createdAt'].includes(header.value));
+      }
+      if (this.$vuetify.breakpoint.smAndDown) {
+        return this.headers.filter((header) => !['description', 'createdAt'].includes(header.value));
+      }
+      return this.headers;
+    },
     products() {
       return this.$store.getters['products/products'];
     },
     loading() {
       return this.$store.state.products.loading;
     },
+    lowStockProducts() {
+      return this.products.filter((product) => Number(product.stock) > 0 && Number(product.stock) <= this.lowStockThreshold);
+    },
+    lowStockSummary() {
+      const names = this.lowStockProducts.slice(0, 3).map((product) => product.name).join(', ');
+      const remaining = this.lowStockProducts.length - 3;
+      return `${names}${remaining > 0 ? ` และอีก ${remaining} รายการ` : ''} · เหลือ 1–${this.lowStockThreshold} ชิ้น`;
+    },
+    normalStockCount() {
+      return this.products.filter((product) => Number(product.stock) > this.lowStockThreshold).length;
+    },
+    outOfStockCount() {
+      return this.products.filter((product) => Number(product.stock) <= 0).length;
+    },
+    filteredProducts() {
+      const keyword = this.search.trim().toLowerCase();
+      return this.products.filter((product) => {
+        const stock = Number(product.stock);
+        const matchesStock = this.stockFilter === 'all' ||
+          (this.stockFilter === 'normal' && stock > this.lowStockThreshold) ||
+          (this.stockFilter === 'low' && stock > 0 && stock <= this.lowStockThreshold) ||
+          (this.stockFilter === 'out' && stock <= 0);
+        const matchesSearch = !keyword || `${product.name} ${product.description || ''}`.toLowerCase().includes(keyword);
+        return matchesStock && matchesSearch;
+      });
+    },
+    productEmptyText() {
+      if (this.search) return 'ไม่พบสินค้าที่ตรงกับคำค้นหา';
+      if (this.stockFilter === 'low') return 'ไม่มีสินค้าที่ใกล้หมด';
+      if (this.stockFilter === 'normal') return 'ไม่มีสินค้าที่มีสต็อกปกติ';
+      if (this.stockFilter === 'out') return 'ไม่มีสินค้าที่หมดสต็อก';
+      return 'ยังไม่มีสินค้า';
+    },
   },
   created() {
     this.load();
   },
   methods: {
+    setStockFilter(filter) {
+      this.stockFilter = filter;
+    },
     async load() {
       this.error = '';
       try {

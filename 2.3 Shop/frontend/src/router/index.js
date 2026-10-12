@@ -7,6 +7,7 @@ import RegisterView from '../views/RegisterView.vue';
 import ProductsView from '../views/ProductsView.vue';
 import ProductDetailView from '../views/ProductDetailView.vue';
 import CartView from '../views/CartView.vue';
+import MyOrdersView from '../views/MyOrdersView.vue';
 import AdminProductsView from '../views/AdminProductsView.vue';
 import AdminCategoriesView from '../views/AdminCategoriesView.vue';
 import AdminOrdersView from '../views/AdminOrdersView.vue';
@@ -28,6 +29,12 @@ const router = new Router({
       meta: { requiresAuth: true },
     },
     { path: '/cart', name: 'cart', component: CartView, meta: { requiresAuth: true } },
+    {
+      path: '/my-orders',
+      name: 'my-orders',
+      component: MyOrdersView,
+      meta: { requiresAuth: true, requiresCustomer: true },
+    },
     {
       path: '/admin/products',
       name: 'admin-products',
@@ -64,6 +71,7 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !authenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } });
   }
+  if (to.meta.requiresCustomer && admin) return next('/admin/orders');
   if (to.meta.requiresAdmin && !admin) return next('/products');
   return next();
 });

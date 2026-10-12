@@ -2,7 +2,7 @@
   <v-card class="product-card app-shell-card d-flex flex-column">
     <v-img :src="image || undefined" height="220" class="product-image" @error="imageFailed = true">
       <div class="fill-height d-flex align-center justify-center">
-        <v-icon v-if="!image || imageFailed" size="72" color="rgba(255,255,255,.55)">mdi-circuit-board</v-icon>
+        <v-icon v-if="!image || imageFailed" class="product-fallback-icon" size="72">mdi-circuit-board</v-icon>
       </div>
       <v-chip v-if="product.stock > 0" color="success" small class="ma-3 product-status">มีสินค้า</v-chip>
       <v-chip v-else color="error" small class="ma-3 product-status">หมดสต็อก</v-chip>

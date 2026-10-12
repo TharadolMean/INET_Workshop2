@@ -21,6 +21,7 @@ router.get('/users', requireAdmin, user.list);
 router.put('/users/:id/approve', requireAdmin, validateId, user.approve);
 
 // Orders (admin ดูรายการทั้งหมด, user สร้าง Order ได้)
+router.get('/orders/mine', order.listMine);
 router.get('/orders', requireAdmin, order.listAll);
 router.post('/orders', order.createBatch);
 

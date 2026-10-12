@@ -13,6 +13,15 @@ exports.listAll = async (_req, res) => {
   return r.ok(res, orders);
 };
 
+// GET /api/v1/orders/mine - Order ของ user ที่ login อยู่
+exports.listMine = async (req, res) => {
+  const orders = await Order.find({ user: req.user._id })
+    .populate('product', 'name price')
+    .populate('items.product', 'name price')
+    .sort({ createdAt: -1 });
+  return r.ok(res, orders);
+};
+
 // GET /api/v1/products/:id/orders - Order ทั้งหมดของ Product
 exports.listByProduct = async (req, res) => {
   const product = await Product.findById(req.params.id);

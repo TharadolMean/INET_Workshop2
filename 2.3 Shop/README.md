@@ -97,11 +97,16 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - เก็บ Cart ใน Local Storage
 - ตรวจสอบ stock กับ Backend ก่อน checkout
 - สร้าง Order ผ่าน API เดิม
+- ดูประวัติและรายละเอียด Order ของตัวเอง
 
 ### Admin
 
 - เพิ่ม แก้ไข และลบสินค้า
+- ค้นหาสินค้าและดูการแจ้งเตือนสินค้าเหลือไม่เกิน 5 ชิ้น
+- ดูจำนวนสินค้าทั้งหมด สต็อกปกติ ใกล้หมด และหมดสต็อก พร้อมกรองตารางตามสต็อก
+- ดูจำนวนหมวดหมู่ทั้งหมด หมวดหมู่ที่เปิดใช้งานและปิดใช้งาน พร้อมกรองตามสถานะ
 - ดูคำสั่งซื้อทั้งหมด
+- ค้นหา Order และกรองตามช่วงเวลา
 - อนุมัติสมาชิกที่รอการอนุมัติ
 - เข้าถึงหน้าจัดการผ่าน Router Guard และ Backend authorization
 
@@ -116,11 +121,14 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - `DELETE /products/:id`
 - `POST /products/:id/orders`
 - `POST /orders`
+- `GET /orders/mine`
 - `GET /orders`
 - `GET /users?isApproved=false`
 - `PUT /users/:id/approve`
 
 ทุก API response ใช้รูปแบบ `{ status, message, data }` และ Frontend อ่านข้อมูลจาก `response.data.data`
+
+`GET /orders/mine` แสดงเฉพาะ Order ของผู้ใช้ที่ login อยู่ โดยอ้างอิง user จาก JWT ส่วน `GET /orders` ใช้สำหรับ Admin ดู Order ทั้งหมด
 
 การ checkout ของ Frontend ใช้ `POST /orders` เพื่อสร้าง Order เดียวที่มีสินค้าได้หลายรายการ ระบบจะตรวจสอบ stock ทั้งหมดใน Transaction เดียว และจะล้าง Cart เมื่อสร้าง Order สำเร็จเท่านั้น ส่วน `POST /products/:id/orders` ยังคงรองรับ Order แบบสินค้าเดียวเพื่อความเข้ากันได้กับ Workshop 01
 

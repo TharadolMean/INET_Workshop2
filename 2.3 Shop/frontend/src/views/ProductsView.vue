@@ -39,7 +39,7 @@
         <v-col v-for="category in categories" :key="category._id" cols="6" sm="4" md="2">
           <v-card
             class="category-tile pa-4 text-center"
-            :class="{ 'blue lighten-5': selectedCategory === category._id }"
+            :class="{ 'category-tile--selected': selectedCategory === category._id }"
             flat
             @click="selectCategory(category._id)"
           >

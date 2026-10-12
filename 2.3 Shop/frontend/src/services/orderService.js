@@ -1,6 +1,9 @@
 import api from './api';
 
 export default {
+  listMine() {
+    return api.get('/orders/mine');
+  },
   list() {
     return api.get('/orders');
   },
