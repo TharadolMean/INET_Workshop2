@@ -17,3 +17,4 @@ export default {
   technicalSkills: ['Node.js', 'Python', 'JavaScript', 'Vue.js', 'Next.js', 'React', 'MongoDB'],
   profileImage: 'https://placehold.co/320x320/8B5CF6/FFFFFF?text=Profile'
 }
+//test
