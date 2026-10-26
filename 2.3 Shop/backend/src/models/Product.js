@@ -6,6 +6,8 @@ const productSchema = new mongoose.Schema(
     description: { type: String, default: '', trim: true },
     price: { type: Number, required: true, min: 0 },
     stock: { type: Number, required: true, min: 0, default: 0 },
+    isArchived: { type: Boolean, default: false, index: true },
+    archivedAt: { type: Date, default: null },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
     image: {
       filename: { type: String, default: '' },

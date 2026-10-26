@@ -1,10 +1,12 @@
 import authService from '../../services/authService';
 
-const savedUser = localStorage.getItem('shop_user');
+const savedUser = (() => {
+  try { return JSON.parse(localStorage.getItem('shop_user') || 'null'); } catch { return null; }
+})();
 
 const state = {
   token: localStorage.getItem('shop_token') || '',
-  user: savedUser ? JSON.parse(savedUser) : null,
+  user: savedUser,
   loading: false,
   error: '',
 };
@@ -37,12 +39,13 @@ const mutations = {
 };
 
 const actions = {
-  async login({ commit }, payload) {
+  async login({ commit, dispatch }, payload) {
     commit('SET_LOADING', true);
     commit('SET_ERROR', '');
     try {
       const { data } = await authService.login(payload);
       commit('SET_AUTH', data.data);
+      await dispatch('cart/setUser', data.data.user._id || data.data.user.id, { root: true });
       return data.data;
     } catch (error) {
       commit('SET_ERROR', error.response?.data?.message || 'เข้าสู่ระบบไม่สำเร็จ');
@@ -64,7 +67,8 @@ const actions = {
       commit('SET_LOADING', false);
     }
   },
-  logout({ commit }) {
+  logout({ commit, dispatch }) {
+    dispatch('cart/setUser', null, { root: true });
     commit('CLEAR_AUTH');
   },
 };

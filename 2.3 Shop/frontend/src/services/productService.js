@@ -14,8 +14,8 @@ const toFormData = (payload) => {
 };
 
 export default {
-  list() {
-    return api.get('/products');
+  list(options = {}) {
+    return api.get('/products', { params: options });
   },
   get(id) {
     return api.get(`/products/${id}`);
@@ -28,5 +28,8 @@ export default {
   },
   remove(id) {
     return api.delete(`/products/${id}`);
+  },
+  restore(id) {
+    return api.post(`/products/${id}/restore`);
   },
 };

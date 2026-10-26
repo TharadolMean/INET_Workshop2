@@ -11,6 +11,18 @@ const orderItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const orderStatusValues = ['pending', 'confirmed', 'packing', 'shipped', 'delivered', 'cancelled'];
+
+const statusHistorySchema = new mongoose.Schema(
+  {
+    status: { type: String, enum: orderStatusValues, required: true },
+    changedAt: { type: Date, required: true, default: Date.now },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    note: { type: String, default: '', trim: true, maxlength: 500 },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     // Legacy single-product Order fields. Keep them readable for Workshop 01 data.
@@ -20,9 +32,18 @@ const orderSchema = new mongoose.Schema(
     unitPrice: { type: Number, min: 0 },
     items: { type: [orderItemSchema], default: undefined },
     totalPrice: { type: Number, required: true, min: 0 },
+    // New orders set pending explicitly; old status-less records default closed to prevent unsafe restocks.
+    status: { type: String, enum: orderStatusValues, default: 'delivered', index: true },
+    statusHistory: { type: [statusHistorySchema], default: [] },
+    statusUpdatedAt: { type: Date, default: null },
+    cancelledAt: { type: Date, default: null },
+    cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    stockRestored: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+orderSchema.index({ createdAt: -1 });
 
 orderSchema.pre('validate', function validateOrder() {
   const hasItems = Array.isArray(this.items) && this.items.length > 0;
@@ -41,3 +62,4 @@ orderSchema.set('toJSON', {
 });
 
 module.exports = mongoose.model('Order', orderSchema);
+module.exports.orderStatusValues = orderStatusValues;

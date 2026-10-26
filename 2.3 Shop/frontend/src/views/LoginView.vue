@@ -56,7 +56,7 @@ export default {
       this.error = '';
       try {
         await this.$store.dispatch('auth/login', this.form);
-        const landingPage = this.$store.getters['auth/isAdmin'] ? '/admin/products' : '/products';
+        const landingPage = this.$store.getters['auth/isAdmin'] ? '/admin/dashboard' : '/products';
         this.$router.replace(this.$route.query.redirect || landingPage);
       } catch (error) {
         this.error = getApiError(error, 'เข้าสู่ระบบไม่สำเร็จ');

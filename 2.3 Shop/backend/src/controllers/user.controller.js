@@ -14,7 +14,11 @@ exports.list = async (req, res) => {
 
 // PUT /api/v1/users/:id/approve  (admin)
 exports.approve = async (req, res) => {
-  const user = await User.findByIdAndUpdate(req.params.id, { isApproved: true }, { new: true });
+  const user = await User.findOneAndUpdate(
+    { _id: req.params.id, role: 'user' },
+    { isApproved: true },
+    { new: true }
+  );
   if (!user) return r.badRequest(res, 'user not found');
   return r.ok(res, user, 'user approved');
 };

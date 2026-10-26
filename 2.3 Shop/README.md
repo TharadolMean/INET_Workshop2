@@ -40,17 +40,19 @@ MONGO_URI=mongodb://localhost:27017/workshop_2_3
 JWT_SECRET=<long-random-secret>
 JWT_EXPIRES_IN=1d
 CORS_ORIGINS=http://localhost:8080
+ADMIN_EMAIL=admin@example.local
+ADMIN_PASSWORD=<unique-development-password>
 ```
 
 ใช้ฐานข้อมูล `workshop_2_3` แยกจาก `workshop_1` โดยไม่ลบหรือ reset ฐานข้อมูลเดิม ชื่อ `workshop_2.3` ใช้ไม่ได้กับ MongoDB เนื่องจากมีจุดในชื่อ database
 
-หากต้องการใช้ Multi-item Order บนเครื่อง Local ต้องเปิด MongoDB แบบ replica set และกำหนด URI เช่น:
+Checkout, ยกเลิก Order และบันทึกประวัติสต็อกใช้ MongoDB transaction จึงต้องเปิด Local MongoDB แบบ replica set และกำหนด URI เช่น:
 
 ```env
 MONGO_URI=mongodb://localhost:27017/workshop_2_3?replicaSet=rs0
 ```
 
-จากนั้นเริ่ม MongoDB ด้วย `--replSet rs0` และรัน `rs.initiate()` หนึ่งครั้งใน `mongosh` หากยังใช้ MongoDB แบบ standalone ระบบส่วนอื่นยังทำงานได้ แต่ `POST /orders` จะตอบ `503` เพื่อป้องกันการหัก Stock แบบไม่ atomic
+จากนั้นเริ่ม MongoDB ด้วย `--replSet rs0` และรัน `rs.initiate()` หนึ่งครั้งใน `mongosh` หากยังใช้ MongoDB แบบ standalone ระบบส่วนอื่นยังทำงานได้ แต่ `POST /orders`, `POST /products/:id/orders` และการยกเลิก Order จะตอบ `503` เพื่อไม่ให้ stock กับ audit history บันทึกไม่ตรงกัน
 
 เริ่ม Backend:
 
@@ -60,7 +62,15 @@ npm run dev
 
 Backend ทำงานที่ `http://localhost:3000` และ API base URL คือ `http://localhost:3000/api/v1`
 
-ระบบจะสร้าง Admin เริ่มต้นจากค่า `ADMIN_EMAIL`, `ADMIN_PASSWORD` และ `ADMIN_NAME` เมื่อเปิด Server ครั้งแรก หากนำไปใช้งานจริงควรเปลี่ยนรหัสผ่านทันที
+กำหนด `JWT_SECRET` เป็นค่าสุ่มที่ยาวอย่างน้อย 32 ตัวอักษร ห้ามใช้ค่า placeholder จาก `.env.example` ระบบจะหยุดเริ่มทำงานหาก secret ไม่ถูกต้อง
+
+สร้างค่า secret บน Windows ได้ด้วย `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` จากโฟลเดอร์ `backend` แล้วนำผลลัพธ์ไปใส่ใน `.env` บัญชี Admin ใหม่ต้องใช้รหัสผ่านเฉพาะที่มีความยาว 12–72 ตัวอักษร
+
+หากยังไม่มี Admin ระบบจะสร้างบัญชีแรกจาก `ADMIN_EMAIL`, `ADMIN_PASSWORD` และ `ADMIN_NAME` โดยไม่มีรหัสผ่านเริ่มต้นที่เดาได้ หากมี Admin อยู่แล้ว ระบบจะไม่เปลี่ยนบัญชีเดิม ตัวแปร `ADMIN_PASSWORD` ใช้เฉพาะตอนสร้าง Admin ใหม่
+
+หากต้องเปลี่ยนรหัสผ่าน Admin เดิมในฐานข้อมูล Local ให้ตั้ง `RESET_ADMIN_EMAIL` และ `RESET_ADMIN_PASSWORD` ชั่วคราวใน `backend/.env` (รหัสผ่านใหม่ 12–72 ตัวอักษร) แล้วรัน `npm run admin:reset-password` จาก `backend` จากนั้นลบตัวแปร reset ออกจาก `.env` คำสั่งนี้ปฏิเสธการทำงานเมื่อ `NODE_ENV=production` และไม่ถูกรันอัตโนมัติ
+
+ฟิลด์ archive เข้ากันได้กับข้อมูลเก่าโดยไม่ต้อง migrate หากต้องการ backfill ค่าเริ่มต้นไว้ในเอกสาร Product ให้สำรองฐานข้อมูลก่อน แล้วรัน `npm run db:migrate:archive` จาก `backend` คำสั่งนี้ทำซ้ำได้และแก้เฉพาะเอกสารที่ยังไม่มี `isArchived`; ไม่ลบหรือเปลี่ยนสินค้าที่ archive แล้ว
 
 ## การตั้งค่าและเริ่ม Frontend
 
@@ -94,18 +104,25 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - Login ด้วย JWT หลังได้รับอนุมัติ
 - ดูสินค้าและรายละเอียดสินค้า
 - เพิ่ม ลด และลบสินค้าใน Cart
-- เก็บ Cart ใน Local Storage
+- เก็บ Cart ใน Local Storage แยกตามบัญชีผู้ใช้บน Browser เครื่องนั้น
 - ตรวจสอบ stock กับ Backend ก่อน checkout
 - สร้าง Order ผ่าน API เดิม
 - ดูประวัติและรายละเอียด Order ของตัวเอง
+- ติดตามสถานะ Order และประวัติการเปลี่ยนสถานะ
+- ยกเลิก Order ของตัวเองได้ก่อนเริ่มจัดเตรียมสินค้า โดยระบบคืนสต็อกให้ครั้งเดียว
 
 ### Admin
 
-- เพิ่ม แก้ไข และลบสินค้า
+- ดู Dashboard สรุป Order มูลค่า Order จำลอง ลูกค้า สินค้า/สต็อก Order ล่าสุด สินค้าขายดี สถานะ และแนวโน้มรายวัน/เดือน พร้อมตัวกรองวันที่
+- Dashboard แสดงสต็อกต่ำเฉพาะสินค้าที่เปิดขาย; Order ยกเลิกไม่ถูกรวมในมูลค่า Order หรือยอดขายสินค้า
+- เพิ่มและแก้ไขสินค้า; การลบจะเก็บสินค้าเข้าคลัง (archive) และกู้คืนได้
+- สินค้าที่ archive จะไม่แสดงหน้าร้าน และ Order เก่าจะไม่ถูกลบ
 - ค้นหาสินค้าและดูการแจ้งเตือนสินค้าเหลือไม่เกิน 5 ชิ้น
 - ดูจำนวนสินค้าทั้งหมด สต็อกปกติ ใกล้หมด และหมดสต็อก พร้อมกรองตารางตามสต็อก
 - ดูจำนวนหมวดหมู่ทั้งหมด หมวดหมู่ที่เปิดใช้งานและปิดใช้งาน พร้อมกรองตามสถานะ
 - ดูคำสั่งซื้อทั้งหมด
+- เปลี่ยนสถานะ Order ตามลำดับที่ระบบอนุญาต และดูประวัติผู้เปลี่ยนพร้อมเวลา
+- ตรวจสอบประวัติการเคลื่อนไหวสต็อกผ่าน API สำหรับ Admin
 - ค้นหา Order และกรองตามช่วงเวลา
 - อนุมัติสมาชิกที่รอการอนุมัติ
 - เข้าถึงหน้าจัดการผ่าน Router Guard และ Backend authorization
@@ -119,16 +136,25 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - `POST /products`
 - `PUT /products/:id`
 - `DELETE /products/:id`
+- `POST /products/:id/restore` (admin)
 - `POST /products/:id/orders`
 - `POST /orders`
 - `GET /orders/mine`
 - `GET /orders`
+- `POST /orders/:id/cancel`
+- `PATCH /orders/:id/status` (admin)
+- `GET /inventory/movements` (admin; รองรับ `product`, `order`, `limit`)
+- `GET /admin/dashboard` (admin; รองรับ `from`, `to` รูปแบบ `YYYY-MM-DD` และ `interval=day|month`)
 - `GET /users?isApproved=false`
 - `PUT /users/:id/approve`
 
 ทุก API response ใช้รูปแบบ `{ status, message, data }` และ Frontend อ่านข้อมูลจาก `response.data.data`
 
 `GET /orders/mine` แสดงเฉพาะ Order ของผู้ใช้ที่ login อยู่ โดยอ้างอิง user จาก JWT ส่วน `GET /orders` ใช้สำหรับ Admin ดู Order ทั้งหมด
+
+Dashboard ใช้ MongoDB aggregation และช่วงวันที่ UTC (ค่าเริ่มต้น 30 วันล่าสุด, สูงสุด 10 ปี; กราฟรายวันจำกัดไม่เกิน 366 วัน) มูลค่า Order คำนวณจาก `totalPrice` และไม่นับ Order ที่ยกเลิก จึงเป็นมูลค่า Order จำลอง ไม่ใช่รายได้ที่รับชำระแล้ว จำนวนลูกค้ารวมผู้ใช้ role `user` ทั้งหมด และสินค้า/สต็อกบน Dashboard นับเฉพาะ Product ที่ไม่ archive
+
+สถานะ Order คือ `pending → confirmed → packing → shipped → delivered` โดยยกเลิกได้จาก `pending` หรือ `confirmed` เท่านั้น การยกเลิกผ่าน transaction เปลี่ยนสถานะ คืน stock และบันทึก Inventory Movement พร้อมกัน Order เก่าที่ไม่มีสถานะจะอ่านเป็น `delivered` เพื่อไม่ให้ยกเลิกแล้วคืน stock ให้รายการที่อาจจัดส่งไปแล้ว; Order เก่าไม่มี status history ย้อนหลัง
 
 การ checkout ของ Frontend ใช้ `POST /orders` เพื่อสร้าง Order เดียวที่มีสินค้าได้หลายรายการ ระบบจะตรวจสอบ stock ทั้งหมดใน Transaction เดียว และจะล้าง Cart เมื่อสร้าง Order สำเร็จเท่านั้น ส่วน `POST /products/:id/orders` ยังคงรองรับ Order แบบสินค้าเดียวเพื่อความเข้ากันได้กับ Workshop 01
 
@@ -150,16 +176,16 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 npm run build
 
 # backend
-node --check src/app.js
-node --check src/routes/index.js
+npm test
 ```
 
 Postman collection อยู่ที่ `backend/postman/Workshop_1.postman_collection.json` และถูกปรับให้ Product CRUD และการอ่าน Order ทั้งหมดใช้ Admin token ตาม authorization ที่เพิ่มขึ้น
 
 ## Known limitations
 
-- API เดิมยังรองรับ Order ครั้งละหนึ่ง Product และยังไม่มี payment, delivery หรือ order status
+- Legacy API ยังรองรับ Order ครั้งละหนึ่ง Product; ระบบยังไม่มี payment gateway หรือ carrier integration
 - Multi-item Order ต้องใช้ MongoDB replica set หรือ mongos เพื่อรองรับ Transaction; MongoDB แบบ standalone จะตอบ `503` พร้อมข้อความให้เปิดใช้ replica set
-- Cart เป็น Local Storage ของ Browser ไม่ใช่ Cart API
-- รูปสินค้าใช้ placeholder เนื่องจาก Product schema เดิมไม่มีระบบ upload หรือ image storage
-- การลบ Product จะลบ Order ที่อ้างถึง Product ตามพฤติกรรมของ Backend เดิม จึงมี confirmation dialog แจ้งผู้ดูแลก่อนลบ
+- Single-item checkout และการยกเลิก Order ใช้ transaction ด้วย เพื่อบันทึก stock และ Inventory Movement ให้สอดคล้องกัน จึงต้องใช้ replica set หรือ mongos เช่นกัน
+- Cart เป็น Local Storage แยกตามบัญชีใน Browser ปัจจุบัน ยังไม่มี Cart API สำหรับ sync ข้ามอุปกรณ์
+- รูปสินค้าจัดเก็บในเครื่องผ่าน Multer; ค่าชนิดไฟล์ตรวจจาก MIME metadata และยังไม่มี content sniffing
+- การ archive Product คงเอกสาร Product และ Order ไว้ใน MongoDB โดยไม่ต้อง migration; ฟิลด์ archive ของเอกสารเก่าจะถือว่า active

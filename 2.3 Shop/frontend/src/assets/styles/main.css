@@ -921,6 +921,50 @@ body {
   }
 }
 
+/* Phase 2 admin dashboard */
+.dashboard-stat-card { min-height: 158px; padding: 20px; position: relative; overflow: hidden; }
+.dashboard-stat-icon { align-items: center; border-radius: 12px; display: flex; height: 42px; justify-content: center; margin-bottom: 15px; width: 42px; }
+.stat-orders { background: rgba(37, 99, 235, .10); }
+.stat-value { background: rgba(22, 163, 74, .10); }
+.stat-customers { background: rgba(124, 58, 237, .10); }
+.stat-products { background: rgba(14, 165, 233, .10); }
+.stat-stock { background: rgba(245, 158, 11, .13); }
+.dashboard-stat-label { color: #64748b; font-size: .82rem; }
+.dashboard-stat-value { color: #0f172a; font-size: 1.7rem; font-weight: 750; line-height: 1.25; margin-top: 3px; }
+.dashboard-stat-value--currency { font-size: 1.35rem; }
+.dashboard-stat-foot { color: #64748b; font-size: .75rem; margin-top: 5px; }
+.dashboard-filter-card { border: 1px solid rgba(148, 163, 184, .2); }
+.simulated-value-note { font-size: .9rem; }
+.dashboard-panel { height: 100%; overflow: hidden; }
+.dashboard-legend { color: #64748b; display: flex; flex-wrap: wrap; font-size: .75rem; gap: 14px; }
+.dashboard-legend span { align-items: center; display: inline-flex; gap: 6px; }
+.legend-dot { border-radius: 50%; display: inline-block; height: 9px; width: 9px; }
+.legend-orders { background: #2563eb; }
+.legend-value { background: #f59e0b; }
+.dashboard-trends { align-items: end; border-bottom: 1px solid #cbd5e1; display: flex; gap: 4px; height: 174px; overflow-x: auto; padding: 10px 2px 0; }
+.dashboard-trends--dense { gap: 2px; }
+.dashboard-trend-column { align-items: center; display: flex; flex: 1 0 24px; flex-direction: column; height: 100%; justify-content: end; min-width: 0; }
+.dashboard-trends--dense .dashboard-trend-column { flex-basis: 12px; }
+.trend-bars { align-items: end; display: flex; gap: 2px; height: 130px; justify-content: center; width: 100%; }
+.trend-bar { border-radius: 3px 3px 0 0; min-height: 0; width: 42%; }
+.trend-bar-orders { background: #2563eb; }
+.trend-bar-value { background: #f59e0b; }
+.trend-period { color: #64748b; font-size: .62rem; height: 20px; overflow: visible; padding-top: 4px; white-space: nowrap; }
+.dashboard-trend-summary { display: flex; flex-wrap: wrap; gap: 16px; }
+.dashboard-status-row { margin-bottom: 15px; }
+.dashboard-status-row span { color: #475569; font-size: .84rem; }
+.dashboard-empty { color: #64748b; font-size: .88rem; padding: 22px 8px; text-align: center; }
+.dashboard-stock-summary { color: #64748b; display: flex; flex-wrap: wrap; font-size: .8rem; gap: 16px; }
+.dashboard-stock-list { padding-top: 0; }
+@media (max-width: 600px) {
+  .dashboard-stat-card { min-height: 140px; padding: 16px; }
+  .dashboard-stat-value { font-size: 1.45rem; }
+  .dashboard-stat-value--currency { font-size: 1.15rem; }
+  .dashboard-panel { padding: 2px; }
+  .dashboard-trends { height: 150px; }
+  .trend-bars { height: 110px; }
+}
+
 @media (max-width: 960px) {
   .admin-content {
     padding: 24px 22px 32px;

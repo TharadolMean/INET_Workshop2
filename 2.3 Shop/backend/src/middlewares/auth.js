@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const res_ = require('../utils/response');
 
@@ -6,8 +7,9 @@ const res_ = require('../utils/response');
 const authenticate = async (req, res, next) => {
   try {
     const header = req.headers.authorization || '';
-    const [scheme, token] = header.split(' ');
-    if (scheme !== 'Bearer' || !token) {
+    const parts = header.trim().split(/\s+/);
+    const [scheme, token] = parts;
+    if (scheme !== 'Bearer' || !token || parts.length !== 2) {
       return res_.unauthorized(res, 'missing or invalid authorization header');
     }
 
@@ -17,6 +19,8 @@ const authenticate = async (req, res, next) => {
     } catch {
       return res_.unauthorized(res, 'invalid or expired token');
     }
+
+    if (!mongoose.isValidObjectId(payload.id)) return res_.unauthorized(res, 'invalid token subject');
 
     const user = await User.findById(payload.id);
     if (!user) return res_.unauthorized(res, 'user not found');

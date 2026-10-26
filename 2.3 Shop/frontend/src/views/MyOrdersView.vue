@@ -30,10 +30,14 @@
         <template v-slot:item.products="{ item }">{{ productSummary(item) }}</template>
         <template v-slot:item.quantity="{ item }">{{ totalQuantity(item) }} ชิ้น</template>
         <template v-slot:item.totalPrice="{ item }"><strong>{{ formatPrice(item.totalPrice) }} บาท</strong></template>
+        <template v-slot:item.status="{ item }"><order-status :order="item" /></template>
         <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
         <template v-slot:item.actions="{ item }">
           <v-btn small text color="primary" @click="viewDetails(item)">
             <v-icon left small>mdi-eye-outline</v-icon>ดูรายละเอียด
+          </v-btn>
+          <v-btn v-if="canCancel(item)" small text color="error" :disabled="canceling" @click="askCancel(item)">
+            <v-icon left small>mdi-cancel</v-icon>ยกเลิก
           </v-btn>
         </template>
       </v-data-table>
@@ -58,6 +62,10 @@
             <v-col cols="12" sm="6">
               <div class="order-meta-label">วันที่สั่งซื้อ</div>
               <div class="order-meta-value">{{ formatDate(selectedOrder.createdAt) }}</div>
+            </v-col>
+            <v-col cols="12">
+              <div class="order-meta-label">สถานะปัจจุบัน</div>
+              <order-status :order="selectedOrder" show-history />
             </v-col>
             <v-col cols="12">
               <div class="order-meta-label">จำนวนสินค้ารวม</div>
@@ -89,26 +97,41 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+    <v-dialog v-model="cancelDialog" max-width="440">
+      <v-card class="app-shell-card">
+        <v-card-title>ยกเลิกคำสั่งซื้อ?</v-card-title>
+        <v-card-text>ยกเลิก Order <code>{{ selectedOrder && shortId(selectedOrder._id) }}</code> ได้ก่อนเริ่มจัดเตรียมสินค้าเท่านั้น ระบบจะคืนสต็อกให้อัตโนมัติ</v-card-text>
+        <v-card-actions><v-spacer /><v-btn text :disabled="canceling" @click="cancelDialog = false">กลับ</v-btn><v-btn color="error" :loading="canceling" @click="cancelOrder">ยืนยันยกเลิก</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
+    <v-snackbar v-model="snackbar" color="success" top>{{ snackbarText }}</v-snackbar>
   </div>
 </template>
 
 <script>
 import orderService from '../services/orderService';
 import { getApiError } from '../services/api';
+import OrderStatus from '../components/orders/OrderStatus.vue';
 
 export default {
   name: 'MyOrdersView',
+  components: { OrderStatus },
   data: () => ({
     orders: [],
     loading: false,
     error: '',
     detailsDialog: false,
     selectedOrder: null,
+    cancelDialog: false,
+    canceling: false,
+    snackbar: false,
+    snackbarText: '',
     headers: [
       { text: 'Order ID', value: '_id' },
       { text: 'สินค้า', value: 'products' },
       { text: 'จำนวน', value: 'quantity' },
       { text: 'ยอดรวม', value: 'totalPrice' },
+      { text: 'สถานะ', value: 'status' },
       { text: 'วันที่สั่งซื้อ', value: 'createdAt' },
       { text: 'รายละเอียด', value: 'actions', sortable: false, align: 'center' },
     ],
@@ -152,6 +175,31 @@ export default {
     viewDetails(order) {
       this.selectedOrder = order;
       this.detailsDialog = true;
+    },
+    canCancel(order) {
+      return ['pending', 'confirmed'].includes(order.status || 'pending');
+    },
+    askCancel(order) {
+      this.selectedOrder = order;
+      this.cancelDialog = true;
+    },
+    async cancelOrder() {
+      if (!this.selectedOrder) return;
+      this.canceling = true;
+      try {
+        await orderService.cancel(this.selectedOrder._id);
+        this.cancelDialog = false;
+        this.snackbarText = 'ยกเลิกคำสั่งซื้อและคืนสต็อกแล้ว';
+        this.snackbar = true;
+        await this.load();
+        if (this.detailsDialog && this.selectedOrder) {
+          this.selectedOrder = this.orders.find((order) => order._id === this.selectedOrder._id) || this.selectedOrder;
+        }
+      } catch (error) {
+        this.error = getApiError(error, 'ยกเลิกคำสั่งซื้อไม่สำเร็จ');
+      } finally {
+        this.canceling = false;
+      }
     },
     shortId(id) {
       return id ? `${id.slice(0, 8)}...` : '-';

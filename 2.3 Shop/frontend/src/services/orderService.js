@@ -16,4 +16,13 @@ export default {
   createOrder(items) {
     return api.post('/orders', { items });
   },
+  cancel(id) {
+    return api.post(`/orders/${id}/cancel`);
+  },
+  updateStatus(id, status, note = '') {
+    return api.patch(`/orders/${id}/status`, { status, note });
+  },
+  listMovements(filters = {}) {
+    return api.get('/inventory/movements', { params: filters });
+  },
 };

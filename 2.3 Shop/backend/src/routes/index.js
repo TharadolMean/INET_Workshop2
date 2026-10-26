@@ -8,6 +8,7 @@ const user = require('../controllers/user.controller');
 const product = require('../controllers/product.controller');
 const category = require('../controllers/category.controller');
 const order = require('../controllers/order.controller');
+const dashboard = require('../controllers/dashboard.controller');
 
 // Auth (public)
 router.post('/register', auth.register);
@@ -24,12 +25,17 @@ router.put('/users/:id/approve', requireAdmin, validateId, user.approve);
 router.get('/orders/mine', order.listMine);
 router.get('/orders', requireAdmin, order.listAll);
 router.post('/orders', order.createBatch);
+router.post('/orders/:id/cancel', validateId, order.cancelMine);
+router.patch('/orders/:id/status', requireAdmin, validateId, order.updateStatus);
+router.get('/inventory/movements', requireAdmin, order.listInventoryMovements);
+router.get('/admin/dashboard', requireAdmin, dashboard.getOverview);
 
 // Products (ทุก role อ่านได้, admin เท่านั้นที่จัดการ)
 router.get('/products', product.list);
 router.post('/products', requireAdmin, upload.single('image'), product.create);
 router.get('/products/:id', validateId, product.getOne);
 router.put('/products/:id', requireAdmin, validateId, upload.single('image'), product.update);
+router.post('/products/:id/restore', requireAdmin, validateId, product.restore);
 router.delete('/products/:id', requireAdmin, validateId, product.remove);
 
 // Categories (ทุก role อ่านได้, admin เท่านั้นที่จัดการ)

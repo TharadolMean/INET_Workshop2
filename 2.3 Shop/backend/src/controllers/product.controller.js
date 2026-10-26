@@ -1,5 +1,4 @@
 const Product = require('../models/Product');
-const Order = require('../models/Order');
 const Category = require('../models/Category');
 const mongoose = require('mongoose');
 const fs = require('fs/promises');
@@ -46,8 +45,9 @@ const removeImageFile = async (image) => {
 };
 
 // GET /api/v1/products
-exports.list = async (_req, res) => {
-  const products = await Product.find()
+exports.list = async (req, res) => {
+  const includeArchived = req.user?.role === 'admin' && req.query.includeArchived === 'true';
+  const products = await Product.find(includeArchived ? {} : { isArchived: { $ne: true } })
     .populate('category', 'name slug isActive')
     .sort({ createdAt: -1 });
   return r.ok(res, products);
@@ -55,7 +55,8 @@ exports.list = async (_req, res) => {
 
 // GET /api/v1/products/:id
 exports.getOne = async (req, res) => {
-  const product = await Product.findById(req.params.id).populate('category', 'name slug isActive');
+  const product = await Product.findOne({ _id: req.params.id, isArchived: { $ne: true } })
+    .populate('category', 'name slug isActive');
   if (!product) return r.badRequest(res, 'product not found');
   return r.ok(res, product);
 };
@@ -123,13 +124,24 @@ exports.update = async (req, res) => {
   return r.ok(res, product);
 };
 
-// DELETE /api/v1/products/:id  (ลบ Order ของ product นั้นด้วย)
+// DELETE /api/v1/products/:id - archive product; historical orders remain intact
 exports.remove = async (req, res) => {
-  const product = await Product.findByIdAndDelete(req.params.id);
+  const product = await Product.findOneAndUpdate(
+    { _id: req.params.id, isArchived: { $ne: true } },
+    { $set: { isArchived: true, archivedAt: new Date() } },
+    { new: true }
+  );
   if (!product) return r.badRequest(res, 'product not found');
-  await removeImageFile(product.image);
-  await Order.deleteMany({
-    $or: [{ product: product._id }, { 'items.product': product._id }],
-  });
-  return r.ok(res, product, 'deleted');
+  return r.ok(res, product, 'archived');
+};
+
+// POST /api/v1/products/:id/restore
+exports.restore = async (req, res) => {
+  const product = await Product.findOneAndUpdate(
+    { _id: req.params.id, isArchived: true },
+    { $set: { isArchived: false, archivedAt: null } },
+    { new: true }
+  );
+  if (!product) return r.badRequest(res, 'archived product not found');
+  return r.ok(res, product, 'restored');
 };

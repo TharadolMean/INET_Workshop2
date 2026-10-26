@@ -29,11 +29,11 @@ const mutations = {
 };
 
 const actions = {
-  async fetchProducts({ commit }) {
+  async fetchProducts({ commit }, options) {
     commit('SET_LOADING', true);
     commit('SET_ERROR', '');
     try {
-      const { data } = await productService.list();
+      const { data } = await productService.list(options);
       commit('SET_ITEMS', data.data || []);
       return data.data || [];
     } catch (error) {
@@ -54,8 +54,14 @@ const actions = {
     return data.data;
   },
   async deleteProduct({ commit }, id) {
-    await productService.remove(id);
-    commit('REMOVE_ITEM', id);
+    const { data } = await productService.remove(id);
+    commit('REPLACE_ITEM', data.data);
+    return data.data;
+  },
+  async restoreProduct({ commit }, id) {
+    const { data } = await productService.restore(id);
+    commit('REPLACE_ITEM', data.data);
+    return data.data;
   },
 };
 

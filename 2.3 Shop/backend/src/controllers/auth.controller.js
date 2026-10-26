@@ -9,16 +9,27 @@ exports.register = async (req, res) => {
   if (!name || !email || !password) {
     return r.badRequest(res, 'name, email and password are required');
   }
+  if (typeof name !== 'string' || !name.trim() || typeof email !== 'string' ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return r.badRequest(res, 'name and a valid email are required');
+  }
   if (String(password).length < 6) {
     return r.badRequest(res, 'password must be at least 6 characters');
   }
+  if (String(password).length > 72) return r.badRequest(res, 'password must be at most 72 characters');
 
   const exists = await User.findOne({ email: String(email).toLowerCase() });
   if (exists) return r.badRequest(res, 'email already registered');
 
   const hashed = await bcrypt.hash(String(password), 10);
   // สมัครใหม่เป็น user และยังไม่ Approve เสมอ (ต้องให้ admin approve)
-  const user = await User.create({ name, email, password: hashed, role: 'user', isApproved: false });
+  let user;
+  try {
+    user = await User.create({ name: name.trim(), email: email.trim(), password: hashed, role: 'user', isApproved: false });
+  } catch (error) {
+    if (error.code === 11000) return r.badRequest(res, 'email already registered');
+    throw error;
+  }
 
   return r.created(res, user, 'registered, waiting for admin approval');
 };

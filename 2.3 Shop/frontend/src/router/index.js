@@ -13,6 +13,7 @@ import AdminProductsView from '../views/AdminProductsView.vue';
 import AdminCategoriesView from '../views/AdminCategoriesView.vue';
 import AdminOrdersView from '../views/AdminOrdersView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
+import AdminDashboardView from '../views/AdminDashboardView.vue';
 
 Vue.use(Router);
 
@@ -21,7 +22,7 @@ const router = new Router({
   routes: [
     {
       path: '/',
-      redirect: () => (store.getters['auth/isAdmin'] ? '/admin/products' : '/products'),
+      redirect: () => (store.getters['auth/isAdmin'] ? '/admin/dashboard' : '/products'),
     },
     { path: '/login', name: 'login', component: LoginView, meta: { guest: true } },
     { path: '/register', name: 'register', component: RegisterView, meta: { guest: true } },
@@ -44,7 +45,13 @@ const router = new Router({
       component: AdminLayout,
       meta: { adminLayout: true },
       children: [
-        { path: '', redirect: { name: 'admin-products' } },
+        { path: '', redirect: { name: 'admin-dashboard' } },
+        {
+          path: 'dashboard',
+          name: 'admin-dashboard',
+          component: AdminDashboardView,
+          meta: { requiresAuth: true, requiresAdmin: true },
+        },
         {
           path: 'products',
           name: 'admin-products',
@@ -83,11 +90,11 @@ router.beforeEach((to, from, next) => {
   const requiresCustomer = to.matched.some((record) => record.meta.requiresCustomer);
   const guestOnly = to.matched.some((record) => record.meta.guest);
 
-  if (guestOnly && authenticated) return next(admin ? '/admin/products' : '/products');
+  if (guestOnly && authenticated) return next(admin ? '/admin/dashboard' : '/products');
   if (requiresAuth && !authenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } });
   }
-  if (requiresCustomer && admin) return next('/admin/products');
+  if (requiresCustomer && admin) return next('/admin/dashboard');
   if (requiresAdmin && !admin) return next('/products');
   return next();
 });

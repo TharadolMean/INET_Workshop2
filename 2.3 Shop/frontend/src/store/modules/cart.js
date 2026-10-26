@@ -1,18 +1,25 @@
 import orderService from '../../services/orderService';
 
-const readCart = () => {
+const cartKey = (userId) => `shop_cart_${userId || 'guest'}`;
+
+const readCart = (userId) => {
   try {
-    const saved = JSON.parse(localStorage.getItem('shop_cart') || '[]');
+    const saved = JSON.parse(localStorage.getItem(cartKey(userId)) || '[]');
     return Array.isArray(saved) ? saved : [];
   } catch {
     return [];
   }
 };
 
-const persist = (items) => localStorage.setItem('shop_cart', JSON.stringify(items));
+const persist = (userId, items) => localStorage.setItem(cartKey(userId), JSON.stringify(items));
+
+const savedUser = (() => {
+  try { return JSON.parse(localStorage.getItem('shop_user') || 'null'); } catch { return null; }
+})();
 
 const state = {
-  items: readCart(),
+  userId: savedUser?._id || savedUser?.id || null,
+  items: readCart(savedUser?._id || savedUser?.id || null),
 };
 
 const getters = {
@@ -31,28 +38,35 @@ const mutations = {
     } else {
       currentState.items.push({ product, quantity });
     }
-    persist(currentState.items);
+    persist(currentState.userId, currentState.items);
   },
   UPDATE_QUANTITY(currentState, { id, quantity }) {
     const item = currentState.items.find((entry) => entry.product._id === id);
     if (item) item.quantity = quantity;
-    persist(currentState.items);
+    persist(currentState.userId, currentState.items);
   },
   REMOVE_ITEM(currentState, id) {
     currentState.items = currentState.items.filter((item) => item.product._id !== id);
-    persist(currentState.items);
+    persist(currentState.userId, currentState.items);
   },
   CLEAR(currentState) {
     currentState.items = [];
-    persist(currentState.items);
+    persist(currentState.userId, currentState.items);
+  },
+  SET_USER(currentState, userId) {
+    currentState.userId = userId || null;
+    currentState.items = readCart(currentState.userId);
   },
   REPLACE_ITEMS(currentState, items) {
     currentState.items = items;
-    persist(items);
+    persist(currentState.userId, items);
   },
 };
 
 const actions = {
+  setUser({ commit }, userId) {
+    commit('SET_USER', userId);
+  },
   addToCart({ commit, state: currentState }, { product, quantity = 1 }) {
     if (!product || product.stock < quantity || quantity < 1) {
       throw new Error('จำนวนสินค้าไม่ถูกต้องหรือสินค้าไม่เพียงพอ');

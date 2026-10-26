@@ -85,6 +85,7 @@ export default {
   data: () => ({
     drawerOpen: false,
     navigationItems: [
+      { name: 'admin-dashboard', title: 'ภาพรวม', icon: 'mdi-view-dashboard-outline' },
       { name: 'admin-products', title: 'จัดการสินค้า', icon: 'mdi-package-variant-closed' },
       { name: 'admin-categories', title: 'จัดการหมวดหมู่', icon: 'mdi-shape-outline' },
       { name: 'admin-orders', title: 'คำสั่งซื้อ', icon: 'mdi-clipboard-list-outline' },
@@ -100,6 +101,7 @@ export default {
     },
     pageTitle() {
       const titles = {
+        'admin-dashboard': 'ภาพรวม',
         'admin-products': 'สินค้า',
         'admin-categories': 'หมวดหมู่',
         'admin-orders': 'คำสั่งซื้อ',

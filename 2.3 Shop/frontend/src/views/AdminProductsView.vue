@@ -69,10 +69,15 @@
         <template v-slot:item.stock="{ item }">
           <v-chip small :color="item.stock < 1 ? 'error' : item.stock <= lowStockThreshold ? 'warning' : 'success'">{{ stockLabel(item.stock) }}</v-chip>
         </template>
+        <template v-slot:item.isArchived="{ item }">
+          <v-chip v-if="item.isArchived" small color="grey" text-color="white">เก็บถาวร</v-chip>
+          <v-chip v-else small color="success">ใช้งาน</v-chip>
+        </template>
         <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
         <template v-slot:item.actions="{ item }">
-          <v-btn icon small color="primary" :aria-label="`แก้ไขสินค้า ${item.name}`" title="แก้ไขสินค้า" @click="openEdit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
-          <v-btn icon small color="error" :aria-label="`ลบสินค้า ${item.name}`" title="ลบสินค้า" @click="askDelete(item)"><v-icon small>mdi-delete-outline</v-icon></v-btn>
+          <v-btn v-if="!item.isArchived" icon small color="primary" :aria-label="`แก้ไขสินค้า ${item.name}`" title="แก้ไขสินค้า" @click="openEdit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
+          <v-btn v-if="!item.isArchived" icon small color="error" :aria-label="`เก็บสินค้า ${item.name} เข้าคลัง`" title="เก็บเข้าคลังโดยคงประวัติ Order" @click="askDelete(item)"><v-icon small>mdi-archive-outline</v-icon></v-btn>
+          <v-btn v-else icon small color="success" :aria-label="`กู้คืนสินค้า ${item.name}`" title="กู้คืนสินค้า" @click="restore(item)"><v-icon small>mdi-restore</v-icon></v-btn>
         </template>
       </v-data-table>
     </v-card>
@@ -85,9 +90,9 @@
     </v-dialog>
     <v-dialog v-model="deleteDialog" max-width="430">
       <v-card class="app-shell-card admin-dialog-card">
-        <v-card-title>ยืนยันการลบสินค้า</v-card-title>
-        <v-card-text>ต้องการลบ <strong>{{ deleting && deleting.name }}</strong> ใช่หรือไม่? Order ที่ผูกกับสินค้านี้จะถูกลบตาม Backend เดิม</v-card-text>
-        <v-card-actions><v-spacer /><v-btn text @click="deleteDialog = false">ยกเลิก</v-btn><v-btn color="error" :loading="deletingNow" @click="remove">ลบสินค้า</v-btn></v-card-actions>
+        <v-card-title>เก็บสินค้าเข้าคลัง?</v-card-title>
+        <v-card-text>ต้องการเก็บ <strong>{{ deleting && deleting.name }}</strong> เข้าคลังหรือไม่? สินค้าจะไม่แสดงหน้าร้าน แต่ประวัติ Order จะคงอยู่</v-card-text>
+        <v-card-actions><v-spacer /><v-btn text @click="deleteDialog = false">ยกเลิก</v-btn><v-btn color="error" :loading="deletingNow" @click="remove">เก็บเข้าคลัง</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
     <v-snackbar v-model="snackbar" :color="snackbarColor">{{ snackbarText }}</v-snackbar>
@@ -122,6 +127,7 @@ export default {
       { text: 'หมวดหมู่', value: 'category', sortable: false },
       { text: 'ราคา', value: 'price' },
       { text: 'สต็อก', value: 'stock' },
+      { text: 'สถานะ', value: 'isArchived', sortable: false },
       { text: 'สร้างเมื่อ', value: 'createdAt' },
       { text: 'การจัดการ', value: 'actions', sortable: false, align: 'right' },
     ],
@@ -192,7 +198,7 @@ export default {
       this.error = '';
       try {
         const [, { data }] = await Promise.all([
-          this.$store.dispatch('products/fetchProducts'),
+          this.$store.dispatch('products/fetchProducts', { includeArchived: true }),
           categoryService.list(),
         ]);
         this.categories = (data.data || []).filter((category) => category.isActive);
@@ -242,6 +248,14 @@ export default {
         this.showMessage(getApiError(error, 'ลบสินค้าไม่สำเร็จ'), 'error');
       } finally {
         this.deletingNow = false;
+      }
+    },
+    async restore(product) {
+      try {
+        await this.$store.dispatch('products/restoreProduct', product._id);
+        this.showMessage('กู้คืนสินค้าสำเร็จ', 'success');
+      } catch (error) {
+        this.showMessage(getApiError(error, 'กู้คืนสินค้าไม่สำเร็จ'), 'error');
       }
     },
     formatPrice(value) {
