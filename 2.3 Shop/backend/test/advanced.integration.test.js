@@ -81,7 +81,22 @@ test('server catalog pagination, audited inventory adjustments and CSV order exp
     method: 'PUT', body: JSON.stringify({ stock: 9 }),
   });
   assert.equal(directStockEdit.status, 200);
+  const directStockBody = await directStockEdit.json();
+  assert.equal(directStockBody.data.stock, 9);
   assert.equal((await Product.findById(product._id)).stock, 9);
+  const concurrentAdjustments = await Promise.all([
+    request('/inventory/adjustments', adminToken, {
+      method: 'POST', body: JSON.stringify({ product: String(product._id), delta: -7, reason: 'concurrent count A' }),
+    }),
+    request('/inventory/adjustments', adminToken, {
+      method: 'POST', body: JSON.stringify({ product: String(product._id), delta: -7, reason: 'concurrent count B' }),
+    }),
+  ]);
+  const adjustmentResponses = await Promise.all(concurrentAdjustments.map(async (response) => ({ status: response.status, body: await response.json() })));
+  assert.deepEqual(adjustmentResponses.map(({ status }) => status).sort(), [201, 409]);
+  const committedAdjustment = adjustmentResponses.find(({ status }) => status === 201).body.data;
+  ids.adjustments.push(new mongoose.Types.ObjectId(committedAdjustment._id));
+  assert.equal((await Product.findById(product._id)).stock, 2);
   const forbidden = await request('/inventory/adjustments', customerToken, {
     method: 'POST', body: JSON.stringify({ product: String(product._id), delta: 1, reason: 'must be denied' }),
   });
@@ -89,8 +104,8 @@ test('server catalog pagination, audited inventory adjustments and CSV order exp
   const historyResponse = await request(`/inventory/adjustments?product=${product._id}`, adminToken);
   const history = await historyResponse.json();
   assert.equal(historyResponse.status, 200);
-  assert.equal(history.data.items.length, 2);
-  assert.deepEqual(history.data.items.map((item) => item.quantityDelta).sort(), [1, 3]);
+  assert.equal(history.data.items.length, 3);
+  assert.deepEqual(history.data.items.map((item) => item.quantityDelta).sort((a, b) => a - b), [-7, 1, 3]);
   const legacyAdjustment = history.data.items.find((item) => item.reason === 'Stock updated through compatible product API');
   assert.ok(legacyAdjustment);
   ids.adjustments.push(new mongoose.Types.ObjectId(legacyAdjustment._id));

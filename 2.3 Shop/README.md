@@ -6,6 +6,7 @@
 
 - Backend: Node.js, Express 5, MongoDB, Mongoose, JWT, bcryptjs
 - Frontend: Vue 2.7, Vuetify 2, Vue Router 3, Vuex 3, Axios, Vue CLI 5
+- Runtime: Node.js 22 recommended; backend dependencies require Node.js 20.19.0 or newer
 
 ## โครงสร้าง
 
@@ -205,12 +206,19 @@ Wishlist, profile และ address book เก็บใน MongoDB และแ
 ## การตรวจสอบ
 
 ```bash
-# frontend
+# frontend component tests and production build
+cd frontend
+npm run test:unit -- --ci
 npm run build
 
-# backend
+# backend unit, API integration and concurrency tests
+cd ../backend
 npm test
 ```
+
+การทดสอบ API ต้องตั้ง `MONGO_TEST_URI` ให้ชี้ไปยังฐานข้อมูลทดสอบ MongoDB แบบ replica set และชื่อ database ต้องมีคำว่า `test`; แต่ละ test suite ใช้ชื่อ database แยกและลบเฉพาะ fixture ของตัวเอง อ่านวิธีตั้งค่า Docker, demo accounts, migration/rollback และการรันทดสอบได้ที่ [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+
+เอกสารประกอบเพิ่มเติม: [Architecture](docs/ARCHITECTURE.md), [Data Model](docs/DATA_MODEL.md), [API Reference](docs/API.md), [V2 Roadmap](docs/V2_ROADMAP.md)
 
 Postman collection อยู่ที่ `backend/postman/Workshop_1.postman_collection.json` และถูกปรับให้ Product CRUD และการอ่าน Order ทั้งหมดใช้ Admin token ตาม authorization ที่เพิ่มขึ้น
 
@@ -224,3 +232,4 @@ Postman collection อยู่ที่ `backend/postman/Workshop_1.postman_col
 - การ archive Product คงเอกสาร Product และ Order ไว้ใน MongoDB โดยไม่ต้อง migration; ฟิลด์ archive ของเอกสารเก่าจะถือว่า active
 - Product schema เพิ่ม `specifications` และ `images` แบบ optional/default ว่าง โดยเก็บ `image` เดิมไว้รองรับ record และ client เก่า ไม่ต้อง migration; gallery ใช้รูปที่ upload ในเครื่องเท่านั้น
 - Phase 4 เพิ่มฟิลด์ optional ใน User/Order และ collections ใหม่ `Wishlist`, `Coupon`, `CouponRedemption`, `ProductReview`; ค่าเริ่มต้นรักษา record เก่าได้โดยไม่ต้อง migration อย่างไรก็ตาม checkout ที่ใช้คูปองยังต้องใช้ MongoDB replica set ตาม requirement ของ transaction เดิม
+- `npm audit --omit=dev` ยังแจ้งช่องโหว่ ReDoS ใน Vue 2.7.16; การแก้ต้องเปลี่ยน framework ซึ่งอยู่นอกขอบเขตและต้องได้รับอนุมัติก่อน ส่วน audit ของ dev tools มีคำเตือนจาก Vue CLI/Jest รุ่นเดิมด้วย

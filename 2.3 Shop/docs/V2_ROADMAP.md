@@ -141,11 +141,30 @@
 5. From the Dashboard, export an Order CSV for a date range. Open it in a spreadsheet, check cancelled Orders have zero simulated value, legacy Orders retain their stored total, and formula-like text is treated as text. Try a range over 366 days and confirm validation rejects it.
 6. Select the Dashboard low-stock alert action and confirm Admin Products opens with the low-stock filter applied.
 
-## Phase 6 — Testing, DevOps and documentation
+## Phase 6 — Testing, DevOps and documentation (implemented in this pass)
 
-- Add unit, API integration, frontend component and concurrency coverage appropriate to implemented behavior.
-- Add local Docker Compose with MongoDB replica-set initialization, GitHub Actions build/test checks, and demo credentials restricted to development.
-- Complete README, architecture/data-model/API docs, setup/migration/rollback instructions and manual test procedures.
+- Added Vue CLI Jest component tests for ProductCard and ProductForm. Backend built-in tests cover rules/models, API integration and checkout/cancellation/coupon/adjustment concurrency. Integration fixtures are isolated by test database name and clean up their own data.
+- Added Dockerfiles and Docker Compose for local MongoDB 7 single-node replica set, Express API and Nginx-served Vue app. MongoDB and image uploads use named volumes; Compose binds published ports to localhost.
+- Added GitHub Actions workflow to start an ephemeral replica set, run backend unit/API/concurrency tests, run frontend component tests and build the frontend. CI uses test-only credentials and does not deploy.
+- Added guarded, idempotent development demo account seed. It requires an explicit local confirmation and 12–72 character unique passwords, refuses production and role conflicts, and never changes existing passwords.
+- Updated Axios within the existing 1.x line to the audit-patched 1.20.0 release. The pinned Vue 2.7.16 stack still has a ReDoS advisory; resolving it requires a separate approved framework migration.
+- Added architecture, data model, API and development/operations guides. Documented local setup, Docker, test database isolation, migrations, rollback, manual verification and persistent volume behavior.
+- No destructive migration is required. New `InventoryAdjustment` records are not backfilled. Existing records and APIs remain compatible; test/dev tooling is additive.
+
+### Phase 6 manual verification
+
+1. Copy `docker.env.example` to `.env`, replace placeholders, run `docker compose up --build`, and confirm MongoDB becomes healthy as replica set, backend seeds the configured first Admin when needed, and the storefront opens at `http://localhost:8080`.
+2. Create demo accounts only after setting `DEMO_SEED_CONFIRM=local-demo-only` and unique development-only passwords; run `npm run db:seed:demo`, rerun it to verify idempotency, and confirm existing passwords are not changed.
+3. Run `npm test` with `MONGO_TEST_URI` pointed at a disposable local replica-set database whose name includes `test`; confirm integration suites use separate suffixed databases. Run frontend `npm run test:unit -- --ci` and `npm run build`.
+4. Open a pull request or push to a GitHub branch and inspect the Actions job for the backend, frontend and build checks. Confirm no deploy step runs.
+5. Stop the local stack with `docker compose down` and restart it to confirm database/uploads persist. Only use `docker compose down -v` when intentionally deleting local demo data.
+
+### Phase 6 checks run for this pass
+
+- `backend/npm test` with local replica-set test URI: 31 tests passed (including integration suites).
+- `frontend/npm run test:unit -- --ci`: 3 component tests passed.
+- `frontend/npm run build`: successful; dependency and bundle warnings are noted in the completion report.
+- `git diff --check`: passed.
 
 ## Files changed in Phase 0
 
@@ -157,4 +176,6 @@
 - Phase 0 frontend: `src/store/modules/cart.js`, `src/store/modules/auth.js`, `src/store/modules/products.js`, `src/services/productService.js`, `src/views/AdminProductsView.vue`.
 - Phase 5 additions: `backend/src/models/InventoryAdjustment.js`, `backend/src/controllers/inventory.controller.js`, `backend/src/controllers/reports.controller.js`, `backend/src/utils/productQuery.js`, `backend/src/utils/csv.js`, `backend/test/advanced.integration.test.js`, `backend/test/productQuery.test.js`, `frontend/src/services/inventoryService.js`, `frontend/src/services/reportService.js`.
 - Phase 5 updates: product listing/controller/store, catalog and Admin Products views, product form/card, Dashboard, route registration, shared styles, `README.md`, and this roadmap.
+- Phase 6 additions: root `docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, frontend Nginx config, `.github/workflows/ci.yml`, `backend/scripts/seed-demo.js`, `backend/src/utils/demoSeed.js`, `backend/test/demoSeed.test.js`, frontend unit tests, and `docs/ARCHITECTURE.md`, `docs/DATA_MODEL.md`, `docs/API.md`, `docs/DEVELOPMENT.md`.
+- Phase 6 updates: package scripts/locks, `.env.example` files, README and this roadmap.
 - Docs: `README.md`, `docs/V2_ROADMAP.md`.
