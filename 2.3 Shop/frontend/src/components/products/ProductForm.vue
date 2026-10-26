@@ -27,7 +27,7 @@
         <v-text-field v-model.number="form.price" label="ราคา (บาท)" type="number" min="0" :rules="[required, nonNegative]" outlined dense />
       </v-col>
       <v-col cols="12" sm="6">
-        <v-text-field v-model.number="form.stock" label="สต็อก" type="number" min="0" :rules="[required, integer]" outlined dense />
+        <v-text-field v-model.number="form.stock" label="สต็อก" type="number" min="0" :rules="[required, integer]" :disabled="Boolean(value && value._id)" :hint="value && value._id ? 'ปรับจำนวนผ่านเมนูปรับสต็อก เพื่อเก็บประวัติผู้ดำเนินการ' : ''" :persistent-hint="Boolean(value && value._id)" outlined dense />
       </v-col>
     </v-row>
     <v-file-input

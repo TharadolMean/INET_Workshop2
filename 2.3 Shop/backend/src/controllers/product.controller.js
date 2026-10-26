@@ -1,9 +1,14 @@
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const InventoryAdjustment = require('../models/InventoryAdjustment');
 const mongoose = require('mongoose');
 const fs = require('fs/promises');
 const path = require('path');
 const r = require('../utils/response');
+const { parseProductQuery } = require('../utils/productQuery');
+
+const isTransactionUnavailable = (error) => error.code === 20 || error.codeName === 'IllegalOperation' ||
+  /transaction numbers are only allowed|replica set|mongos|transactions are not supported/i.test(error.message || '');
 
 const validateProductBody = (body, { partial = false } = {}) => {
   const { name, price, stock } = body || {};
@@ -66,11 +71,35 @@ const removeImageFile = async (image) => {
 
 // GET /api/v1/products
 exports.list = async (req, res) => {
-  const includeArchived = req.user?.role === 'admin' && req.query.includeArchived === 'true';
-  const products = await Product.find(includeArchived ? {} : { isArchived: { $ne: true } })
+  const isAdmin = req.user?.role === 'admin';
+  const parsed = parseProductQuery(req.query, isAdmin);
+  if (parsed.error) return r.badRequest(res, parsed.error);
+  const find = Product.find(parsed.filter)
     .populate('category', 'name slug isActive')
-    .sort({ createdAt: -1 });
-  return r.ok(res, products);
+    .sort(parsed.sort);
+  if (!parsed.paged) return r.ok(res, await find);
+  const totalItems = await Product.countDocuments(parsed.filter);
+  const totalPages = Math.ceil(totalItems / parsed.pagination.limit);
+  const page = Math.min(parsed.pagination.page, totalPages || 1);
+  const products = await find.skip((page - 1) * parsed.pagination.limit).limit(parsed.pagination.limit);
+  const pagination = {
+    page,
+    limit: parsed.pagination.limit,
+    totalItems,
+    totalPages,
+  };
+  if (!isAdmin) return r.ok(res, { items: products, pagination });
+  const [activeProductCount, archivedProductCount, lowStockCount, outOfStockCount] = await Promise.all([
+    Product.countDocuments({ isArchived: { $ne: true } }),
+    Product.countDocuments({ isArchived: true }),
+    Product.countDocuments({ isArchived: { $ne: true }, stock: { $gt: 0, $lte: 5 } }),
+    Product.countDocuments({ isArchived: { $ne: true }, stock: { $lte: 0 } }),
+  ]);
+  return r.ok(res, {
+    items: products,
+    pagination,
+    summary: { activeProductCount, archivedProductCount, lowStockCount, outOfStockCount },
+  });
 };
 
 // GET /api/v1/products/:id
@@ -89,7 +118,6 @@ exports.create = async (req, res) => {
     await Promise.all(images.map(removeImageFile));
     return r.badRequest(res, error);
   }
-
   const category = await getCategory(req.body.category);
   if (req.body.category && !category) {
     await Promise.all(images.map(removeImageFile));
@@ -130,13 +158,18 @@ exports.update = async (req, res) => {
     await Promise.all(images.map(removeImageFile));
     return r.badRequest(res, error);
   }
+  if (req.body.stockAdjustmentReason !== undefined &&
+    (typeof req.body.stockAdjustmentReason !== 'string' || req.body.stockAdjustmentReason.trim().length < 3 || req.body.stockAdjustmentReason.trim().length > 500)) {
+    await Promise.all(images.map(removeImageFile));
+    return r.badRequest(res, 'stockAdjustmentReason must contain 3 to 500 characters');
+  }
 
   const product = await Product.findById(req.params.id);
   if (!product) {
     await Promise.all(images.map(removeImageFile));
     return r.badRequest(res, 'product not found');
   }
-
+  const stockBefore = product.stock;
   const oldImages = existingImages(product);
   const category = await getCategory(req.body.category);
   if (req.body.category !== undefined && req.body.category !== '' && !category) {
@@ -170,10 +203,31 @@ exports.update = async (req, res) => {
     product.image = {};
   }
 
+  const stockChanged = req.body.stock !== undefined && Number(req.body.stock) !== stockBefore;
   try {
-    await product.save();
+    if (stockChanged) {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await product.save({ session });
+          await InventoryAdjustment.create([{
+            product: product._id,
+            actor: req.user._id,
+            quantityDelta: product.stock - stockBefore,
+            stockBefore,
+            stockAfter: product.stock,
+            reason: req.body.stockAdjustmentReason?.trim() || 'Stock updated through compatible product API',
+          }], { session });
+        });
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      await product.save();
+    }
   } catch (updateError) {
     await Promise.all(images.map(removeImageFile));
+    if (isTransactionUnavailable(updateError)) return r.serviceUnavailable(res, 'stock updates require MongoDB replica set or mongos to record inventory history');
     throw updateError;
   }
 

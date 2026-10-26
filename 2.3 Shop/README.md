@@ -116,6 +116,8 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - เขียนรีวิวได้เมื่อมี Order ของสินค้านั้นที่จัดส่งแล้ว; แก้ไขหรือลบได้เฉพาะรีวิวของตนเอง
 - เลือกดูสินค้าและหมวดหมู่ที่เปิดใช้งานได้โดยไม่ต้อง login; ต้อง login และได้รับอนุมัติก่อนใช้ตะกร้าและสั่งซื้อ
 - กรองสินค้าได้ตามหมวดหมู่ คำค้นหา ช่วงราคา สต็อก และการเรียงลำดับ
+- ค้นหาสินค้าจากสเปก และเปลี่ยนหน้ารายการได้โดยให้ Backend กรองและนับผล
+- เปรียบเทียบสินค้าได้ครั้งละไม่เกิน 4 รายการ โดยดูราคา หมวดหมู่ สต็อก รายละเอียดและสเปก
 - ดูภาพสินค้าแบบแกลเลอรี ข้อมูลจำเพาะ และสินค้าในหมวดหมู่เดียวกัน
 - สลับธีมมืด/สว่างได้ทั้งหน้าร้านและแอดมิน โดยจำค่าบน Browser
 
@@ -128,6 +130,8 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - จัดการรูปสินค้าได้สูงสุด 8 ภาพ และบันทึกข้อมูลจำเพาะแบบชื่อ/ค่า
 - สินค้าที่ archive จะไม่แสดงหน้าร้าน และ Order เก่าจะไม่ถูกลบ
 - ค้นหาสินค้าและดูการแจ้งเตือนสินค้าเหลือไม่เกิน 5 ชิ้น
+- ปรับสต็อกเพิ่ม/ลดพร้อมเหตุผล โดยเก็บผู้ปรับ จำนวนก่อน/หลัง และเวลา; หน้าแก้ไขสินค้าจะแนะนำให้ใช้หน้าปรับสต็อก และ API `PUT /products/:id` เดิมยังเปลี่ยน stock ได้โดยระบบบันทึก audit ให้อัตโนมัติ
+- ส่งออก Order ตามช่วงวันที่เป็น CSV จาก Dashboard (ไม่เกิน 366 วัน และป้องกัน formula injection)
 - ดูจำนวนสินค้าทั้งหมด สต็อกปกติ ใกล้หมด และหมดสต็อก พร้อมกรองตารางตามสต็อก
 - ดูจำนวนหมวดหมู่ทั้งหมด หมวดหมู่ที่เปิดใช้งานและปิดใช้งาน พร้อมกรองตามสถานะ
 - ดูคำสั่งซื้อทั้งหมด
@@ -162,11 +166,16 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - `POST /orders/:id/cancel`
 - `PATCH /orders/:id/status` (admin)
 - `GET /inventory/movements` (admin; รองรับ `product`, `order`, `limit`)
+- `POST /inventory/adjustments` (admin; body: `product`, integer `delta`, `reason`)
+- `GET /inventory/adjustments` (admin; รองรับ `product`, `page`, `limit`)
 - `GET /admin/dashboard` (admin; รองรับ `from`, `to` รูปแบบ `YYYY-MM-DD` และ `interval=day|month`)
+- `GET /admin/reports/orders.csv` (admin; รองรับ `from`, `to` ช่วงไม่เกิน 366 วัน)
 - `GET /users?isApproved=false`
 - `PUT /users/:id/approve`
 
 ทุก API response ใช้รูปแบบ `{ status, message, data }` และ Frontend อ่านข้อมูลจาก `response.data.data`
+
+`GET /products` ที่ไม่ส่ง `paged`, `page` หรือ `limit` ยังคงคืน `data` เป็น array เพื่อความเข้ากันได้กับ clients เดิม หากส่ง `paged=true` หรือ `page`/`limit` จะคืน `{ items, pagination }` ใน `data`; ฝั่ง Admin จะมี `summary` เพิ่มสำหรับจำนวนสินค้าและสต็อก ตัวกรอง `q`, `category`, `minPrice`, `maxPrice`, `inStock`, `stockStatus` และ `sort` ถูกตรวจสอบและประมวลผลจาก Backend
 
 `GET /products`, `GET /products/:id` และ `GET /categories` เปิดให้อ่าน catalog ที่เปิดใช้งานได้โดยไม่ต้อง login และรองรับ optional JWT เพื่อคงสิทธิ์ดูรายการ archive ให้ Admin; การเขียนข้อมูลและ Order ยังคงต้องผ่าน authentication, approval และ role check เดิม `GET /orders/mine` แสดงเฉพาะ Order ของผู้ใช้ที่ login อยู่ โดยอ้างอิง user จาก JWT ส่วน `GET /orders` ใช้สำหรับ Admin ดู Order ทั้งหมด
 
@@ -179,6 +188,8 @@ Wishlist, profile และ address book เก็บใน MongoDB และแ
 รีวิว public อ่านได้ แต่เขียนได้เฉพาะบัญชีลูกค้าที่มี Order ของสินค้านั้นสถานะ `delivered` (รวม legacy Order ที่ไม่มีสถานะซึ่งระบบเดิมถือว่าปิดแล้ว) มีรีวิวได้หนึ่งรายการต่อ Product ต่อผู้ใช้; สรุปคะแนนคำนวณจากข้อมูลรีวิวจริง
 
 การ checkout ของ Frontend ใช้ `POST /orders` เพื่อสร้าง Order เดียวที่มีสินค้าได้หลายรายการ ระบบจะตรวจสอบ stock ทั้งหมดใน Transaction เดียว และจะล้าง Cart เมื่อสร้าง Order สำเร็จเท่านั้น ส่วน `POST /products/:id/orders` ยังคงรองรับ Order แบบสินค้าเดียวเพื่อความเข้ากันได้กับ Workshop 01
+
+การปรับสต็อกและการบันทึกประวัติใช้ MongoDB transaction และต้องใช้ replica set หรือ mongos เช่นเดียวกับ checkout; endpoint ตอบ `503` เมื่อฐานข้อมูลไม่รองรับ transaction หน้า Admin แนะนำ endpoint ปรับสต็อกพร้อมเหตุผล ส่วน API `PUT /products/:id` เดิมยังใช้แก้ stock ได้และจะสร้าง audit entry อัตโนมัติ สต็อกตั้งต้นตอนสร้างสินค้าไม่ต้องมี transaction การเพิ่ม collection `InventoryAdjustment` ไม่ต้อง migrate ข้อมูลเดิม; ประวัติจะเริ่มเก็บเมื่อเปิดใช้ Phase 5 และไม่ backfill การปรับในอดีต
 
 ## แนวคิด Vue ที่ใช้
 

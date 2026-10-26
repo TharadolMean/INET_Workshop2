@@ -24,6 +24,9 @@
       <v-btn outlined color="primary" :to="{ name: 'product-detail', params: { id: product._id } }">
         ดูรายละเอียด
       </v-btn>
+      <v-btn icon color="secondary" :aria-label="`เปรียบเทียบ ${product.name}`" @click="$emit('compare', product)">
+        <v-icon>mdi-compare-horizontal</v-icon>
+      </v-btn>
       <v-btn v-if="isCustomer" icon color="secondary" :aria-label="`เพิ่ม ${product.name} ในรายการโปรด`" @click="$emit('wishlist', product)">
         <v-icon>mdi-heart-plus-outline</v-icon>
       </v-btn>

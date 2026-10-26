@@ -68,7 +68,7 @@
         <v-col cols="12" md="7">
           <div class="text-overline primary--text">CURATED FOR YOU</div>
           <h2 class="section-heading mb-1">สินค้าทั้งหมด</h2>
-          <p class="muted-text mb-0" aria-live="polite">แสดง {{ visibleProducts.length }} จาก {{ products.length }} รายการ</p>
+          <p class="muted-text mb-0" aria-live="polite">แสดง {{ products.length }} จาก {{ totalProducts }} รายการ</p>
         </v-col>
         <v-col cols="12" sm="7" md="3">
           <v-text-field
@@ -112,7 +112,7 @@
     </v-row>
     <v-row v-else-if="visibleProducts.length">
       <v-col v-for="product in visibleProducts" :key="product._id" cols="12" sm="6" md="4" lg="3">
-        <product-card :product="product" @add="addToCart" @wishlist="addToWishlist" />
+        <product-card :product="product" @add="addToCart" @wishlist="addToWishlist" @compare="toggleCompare" />
       </v-col>
     </v-row>
     <v-card v-else class="app-shell-card pa-10 text-center">
@@ -122,6 +122,28 @@
       <v-btn color="primary" outlined @click="resetFilters">ล้างตัวกรอง</v-btn>
     </v-card>
     </section>
+
+    <v-card v-if="compareProducts.length" class="app-shell-card pa-4 mt-6 d-flex flex-wrap align-center justify-space-between">
+      <div class="mb-2 mb-sm-0">เลือกเปรียบเทียบแล้ว {{ compareProducts.length }}/4 รายการ</div>
+      <div><v-btn text small @click="compareProducts = []">ล้างรายการ</v-btn><v-btn color="primary" small :disabled="compareProducts.length < 2" @click="compareDialog = true">เปรียบเทียบ</v-btn></div>
+    </v-card>
+    <v-pagination v-if="totalPages > 1" v-model="page" :length="totalPages" :total-visible="7" class="mt-5" aria-label="เปลี่ยนหน้ารายการสินค้า" />
+
+    <v-dialog v-model="compareDialog" max-width="1000" scrollable>
+      <v-card class="app-shell-card">
+        <v-card-title>เปรียบเทียบสินค้า <v-spacer /><v-btn icon aria-label="ปิดหน้าต่าง" @click="compareDialog = false"><v-icon>mdi-close</v-icon></v-btn></v-card-title>
+        <v-card-text>
+          <div class="compare-table-wrap"><table class="compare-table"><thead><tr><th>คุณสมบัติ</th><th v-for="item in compareProducts" :key="item._id">{{ item.name }}<v-btn icon x-small aria-label="นำสินค้าออกจากรายการเปรียบเทียบ" @click="toggleCompare(item)"><v-icon small>mdi-close</v-icon></v-btn></th></tr></thead><tbody>
+            <tr><th>ราคา</th><td v-for="item in compareProducts" :key="`${item._id}-price`">{{ formatPrice(item.price) }} บาท</td></tr>
+            <tr><th>หมวดหมู่</th><td v-for="item in compareProducts" :key="`${item._id}-category`">{{ item.category?.name || '—' }}</td></tr>
+            <tr><th>สต็อก</th><td v-for="item in compareProducts" :key="`${item._id}-stock`">{{ item.stock > 0 ? `${item.stock} ชิ้น` : 'หมดสต็อก' }}</td></tr>
+            <tr><th>รายละเอียด</th><td v-for="item in compareProducts" :key="`${item._id}-description`">{{ item.description || '—' }}</td></tr>
+            <tr v-for="spec in comparisonSpecifications" :key="spec"><th>{{ spec }}</th><td v-for="item in compareProducts" :key="`${item._id}-${spec}`">{{ item.specifications?.find((entry) => entry.name === spec)?.value || '—' }}</td></tr>
+          </tbody></table></div>
+        </v-card-text>
+        <v-card-actions><v-spacer /><v-btn text @click="compareDialog = false">ปิด</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-snackbar v-model="snackbar" :color="snackbarColor">{{ snackbarText }}</v-snackbar>
   </div>
@@ -138,6 +160,11 @@ export default {
   components: { ProductCard },
   data: () => ({
     search: '',
+    page: 1,
+    pageSize: 12,
+    searchTimer: null,
+    compareProducts: [],
+    compareDialog: false,
     selectedCategory: '',
     minPrice: null,
     maxPrice: null,
@@ -163,43 +190,73 @@ export default {
       return this.$store.state.products.loading;
     },
     visibleProducts() {
-      const keyword = this.search.toLowerCase().trim();
-      const filtered = this.products.filter((product) => {
-        const searchable = `${product.name} ${product.description} ${product.category?.name || ''}`.toLowerCase();
-        return (!keyword || searchable.includes(keyword)) &&
-          (!this.selectedCategory || product.category?._id === this.selectedCategory) &&
-          (this.minPrice === null || this.minPrice === '' || Number(product.price) >= Number(this.minPrice)) &&
-          (this.maxPrice === null || this.maxPrice === '' || Number(product.price) <= Number(this.maxPrice)) &&
-          (!this.inStockOnly || Number(product.stock) > 0);
-      });
-      return [...filtered].sort((first, second) => {
-        if (this.sortBy === 'name-asc') return first.name.localeCompare(second.name, 'th');
-        if (this.sortBy === 'price-asc') return first.price - second.price;
-        if (this.sortBy === 'price-desc') return second.price - first.price;
-        return new Date(second.createdAt || 0) - new Date(first.createdAt || 0);
-      });
+      return this.products;
+    },
+    pagination() {
+      return this.$store.state.products.pagination;
+    },
+    totalProducts() {
+      return this.pagination?.totalItems || 0;
+    },
+    totalPages() {
+      return this.pagination?.totalPages || 0;
+    },
+    comparisonSpecifications() {
+      return [...new Set(this.compareProducts.flatMap((item) => (item.specifications || []).map((entry) => entry.name)))];
     },
   },
   watch: {
     '$route.query.q'(value) {
       this.search = value || '';
     },
+    search() { this.scheduleLoad(); },
+    selectedCategory() { this.scheduleLoad(); },
+    minPrice() { this.scheduleLoad(); },
+    maxPrice() { this.scheduleLoad(); },
+    inStockOnly() { this.scheduleLoad(); },
+    sortBy() { this.scheduleLoad(); },
+    page() { this.loadProducts(); },
   },
   created() {
     this.search = this.$route.query.q || '';
     this.load();
+  },
+  beforeDestroy() {
+    clearTimeout(this.searchTimer);
   },
   methods: {
     async load() {
       this.error = '';
       try {
         const [, { data }] = await Promise.all([
-          this.$store.dispatch('products/fetchProducts'),
+          this.loadProducts(),
           categoryService.list(),
         ]);
         this.categories = (data.data || []).filter((category) => category.isActive);
       } catch (error) {
         this.error = getApiError(error, 'โหลดสินค้าไม่สำเร็จ');
+      }
+    },
+    scheduleLoad() {
+      this.page = 1;
+      clearTimeout(this.searchTimer);
+      this.searchTimer = setTimeout(() => this.loadProducts(), 250);
+    },
+    async loadProducts() {
+      const filters = {
+        paged: 'true', page: this.page, limit: this.pageSize, sort: this.sortBy,
+        ...(this.search.trim() ? { q: this.search.trim() } : {}),
+        ...(this.selectedCategory ? { category: this.selectedCategory } : {}),
+        ...(this.minPrice !== null && this.minPrice !== '' ? { minPrice: this.minPrice } : {}),
+        ...(this.maxPrice !== null && this.maxPrice !== '' ? { maxPrice: this.maxPrice } : {}),
+        ...(this.inStockOnly ? { inStock: 'true' } : {}),
+      };
+      try {
+        await this.$store.dispatch('products/fetchProducts', filters);
+        const pagination = this.$store.state.products.pagination;
+        if (pagination && this.page !== pagination.page) this.page = pagination.page;
+      } catch (error) {
+        this.error = getApiError(error, 'ค้นหาสินค้าไม่สำเร็จ');
       }
     },
     selectCategory(id) {
@@ -216,6 +273,7 @@ export default {
       this.maxPrice = null;
       this.inStockOnly = false;
       this.sortBy = 'newest';
+      this.page = 1;
     },
     scrollToProducts() {
       this.$nextTick(() => document.getElementById('product-grid')?.scrollIntoView({ behavior: 'smooth' }));
@@ -246,6 +304,15 @@ export default {
       } catch (error) {
         this.showMessage(getApiError(error, 'บันทึกรายการโปรดไม่สำเร็จ'), 'error');
       }
+    },
+    toggleCompare(product) {
+      const index = this.compareProducts.findIndex((item) => item._id === product._id);
+      if (index >= 0) this.compareProducts.splice(index, 1);
+      else if (this.compareProducts.length < 4) this.compareProducts.push(product);
+      else this.showMessage('เปรียบเทียบได้ครั้งละไม่เกิน 4 สินค้า', 'info');
+    },
+    formatPrice(value) {
+      return new Intl.NumberFormat('th-TH', { maximumFractionDigits: 2 }).format(value || 0);
     },
     showMessage(text, color) {
       this.snackbarText = text;

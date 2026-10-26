@@ -126,8 +126,20 @@
 
 ## Phase 5 — Advanced shop features
 
-- Add structured specifications, product comparison, inventory adjustment history, stronger admin product management, server-side search/filter/pagination, CSV reports and in-dashboard low-stock notifications.
-- Keep notification integrations optional and local development usable without paid services.
+- Existing structured product specifications and in-dashboard low-stock alerts are reused. Added customer-facing comparison for up to four products and server-side catalog/admin search, filters, sorting and bounded pagination.
+- Added admin stock adjustments with a required reason, atomic stock change and actor/before/after history in a new additive `InventoryAdjustment` collection. The Admin UI directs stock edits through this action; legacy `PUT /products/:id` stock changes remain supported and are automatically recorded for API compatibility. Opening stock on product creation remains supported.
+- Added Admin Dashboard export for date-filtered Orders as spreadsheet-safe CSV. CSV exports are restricted to a maximum 366-day date range.
+- Added tests for product query validation, CSV formula escaping, product pagination, adjustment authorization/stock constraints and CSV output.
+- No migration is required: product fields remain unchanged and inventory adjustment history uses a new collection. Stock adjustments require MongoDB replica set or mongos because product and audit writes commit in one transaction.
+
+### Phase 5 manual verification
+
+1. Browse the catalog while logged out; search specification values, select a category, filter by price/stock, change sort and move between pages. Verify the total count and page results match the filters.
+2. Select two to four products for comparison and confirm price, category, stock, description and product-specific specifications display side by side; remove one and clear the selection.
+3. As Admin, search and paginate the product table. Adjust stock with a valid reason, then verify the stock count and adjustment actor/reason/before-after history. Try a reduction below zero and verify it is rejected without a change.
+4. Change an existing product's stock through the legacy `PUT /products/:id` API and confirm it remains compatible while writing an audit entry. In the Admin UI use the adjustment dialog and confirm the reason is recorded. Create a new product with opening stock as usual.
+5. From the Dashboard, export an Order CSV for a date range. Open it in a spreadsheet, check cancelled Orders have zero simulated value, legacy Orders retain their stored total, and formula-like text is treated as text. Try a range over 366 days and confirm validation rejects it.
+6. Select the Dashboard low-stock alert action and confirm Admin Products opens with the low-stock filter applied.
 
 ## Phase 6 — Testing, DevOps and documentation
 
@@ -143,4 +155,6 @@
 - Phase 2 additions: `backend/src/controllers/dashboard.controller.js`, `backend/src/utils/dashboardQuery.js`, `backend/test/dashboardQuery.test.js`, `backend/test/dashboard.integration.test.js`, `frontend/src/services/dashboardService.js`, `frontend/src/views/AdminDashboardView.vue`.
 - Phase 2 updates: route registration, admin router/layout navigation, `README.md`, and this roadmap.
 - Phase 0 frontend: `src/store/modules/cart.js`, `src/store/modules/auth.js`, `src/store/modules/products.js`, `src/services/productService.js`, `src/views/AdminProductsView.vue`.
+- Phase 5 additions: `backend/src/models/InventoryAdjustment.js`, `backend/src/controllers/inventory.controller.js`, `backend/src/controllers/reports.controller.js`, `backend/src/utils/productQuery.js`, `backend/src/utils/csv.js`, `backend/test/advanced.integration.test.js`, `backend/test/productQuery.test.js`, `frontend/src/services/inventoryService.js`, `frontend/src/services/reportService.js`.
+- Phase 5 updates: product listing/controller/store, catalog and Admin Products views, product form/card, Dashboard, route registration, shared styles, `README.md`, and this roadmap.
 - Docs: `README.md`, `docs/V2_ROADMAP.md`.

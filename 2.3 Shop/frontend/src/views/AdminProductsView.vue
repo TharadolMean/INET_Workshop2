@@ -13,7 +13,7 @@
       <v-col cols="6" sm="6" md="3">
         <v-card class="app-shell-card admin-stat-card stat-products" :class="{ 'admin-stat-card--selected': stockFilter === 'all' }" role="button" tabindex="0" :aria-pressed="stockFilter === 'all'" @click="setStockFilter('all')" @keyup.enter="setStockFilter('all')">
           <div class="admin-stat-icon"><v-icon color="primary">mdi-package-variant-closed</v-icon></div>
-          <div><div class="admin-stat-label">สินค้าทั้งหมด</div><div class="admin-stat-value">{{ products.length }}</div></div>
+          <div><div class="admin-stat-label">สินค้าทั้งหมด</div><div class="admin-stat-value">{{ number(summary.activeProductCount + summary.archivedProductCount) }}</div></div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="6" md="3">
@@ -25,7 +25,7 @@
       <v-col cols="6" sm="6" md="3">
         <v-card class="app-shell-card admin-stat-card stat-low" :class="{ 'admin-stat-card--selected': stockFilter === 'low' }" role="button" tabindex="0" :aria-pressed="stockFilter === 'low'" @click="setStockFilter('low')" @keyup.enter="setStockFilter('low')">
           <div class="admin-stat-icon"><v-icon color="warning">mdi-alert-circle-outline</v-icon></div>
-          <div><div class="admin-stat-label">ใกล้หมด (1–{{ lowStockThreshold }})</div><div class="admin-stat-value">{{ lowStockProducts.length }}</div></div>
+        <div><div class="admin-stat-label">ใกล้หมด (1–{{ lowStockThreshold }})</div><div class="admin-stat-value">{{ number(summary.lowStockCount) }}</div></div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="6" md="3">
@@ -35,11 +35,11 @@
         </v-card>
       </v-col>
     </v-row>
-    <v-alert v-if="lowStockProducts.length" type="warning" outlined class="low-stock-alert mb-5">
+    <v-alert v-if="summary.lowStockCount" type="warning" outlined class="low-stock-alert mb-5">
       <div class="d-flex flex-wrap align-center justify-space-between low-stock-alert-content">
         <div>
           <strong>แจ้งเตือนสต็อกต่ำ</strong>
-          <span class="ml-2">{{ lowStockSummary }}</span>
+          <span class="ml-2">มีสินค้าเหลือไม่เกิน {{ lowStockThreshold }} ชิ้น {{ number(summary.lowStockCount) }} รายการ</span>
         </div>
         <v-btn small outlined color="warning" @click="setStockFilter('low')">
           ดูสินค้าใกล้หมด
@@ -58,8 +58,9 @@
           dense
           hide-details
         />
+        <v-select v-model="sortBy" :items="sortOptions" item-text="text" item-value="value" label="เรียงสินค้า" outlined dense hide-details class="admin-product-sort" />
       </div>
-      <v-data-table :headers="responsiveHeaders" :items="filteredProducts" :loading="loading" loading-text="กำลังโหลดสินค้า..." :no-data-text="productEmptyText" class="admin-data-table">
+      <v-data-table :headers="responsiveHeaders" :items="products" :loading="loading" loading-text="กำลังโหลดสินค้า..." :no-data-text="productEmptyText" hide-default-footer class="admin-data-table">
         <template v-slot:item.name="{ item }">
           <div class="admin-product-name">{{ item.name }}</div>
           <div v-if="item.description" class="admin-product-description" :title="item.description">{{ item.description }}</div>
@@ -76,9 +77,25 @@
         <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
         <template v-slot:item.actions="{ item }">
           <v-btn v-if="!item.isArchived" icon small color="primary" :aria-label="`แก้ไขสินค้า ${item.name}`" title="แก้ไขสินค้า" @click="openEdit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
+          <v-btn v-if="!item.isArchived" icon small color="secondary" :aria-label="`ปรับสต็อก ${item.name}`" title="ปรับสต็อกพร้อมบันทึกประวัติ" @click="openAdjustment(item)"><v-icon small>mdi-warehouse-edit-outline</v-icon></v-btn>
           <v-btn v-if="!item.isArchived" icon small color="error" :aria-label="`เก็บสินค้า ${item.name} เข้าคลัง`" title="เก็บเข้าคลังโดยคงประวัติ Order" @click="askDelete(item)"><v-icon small>mdi-archive-outline</v-icon></v-btn>
           <v-btn v-else icon small color="success" :aria-label="`กู้คืนสินค้า ${item.name}`" title="กู้คืนสินค้า" @click="restore(item)"><v-icon small>mdi-restore</v-icon></v-btn>
         </template>
+      </v-data-table>
+      <div v-if="pagination && pagination.totalPages > 1" class="d-flex flex-wrap align-center justify-space-between pa-4">
+        <span class="caption muted-text">{{ number(pagination.totalItems) }} รายการ · หน้า {{ pagination.page }} จาก {{ pagination.totalPages }}</span>
+        <v-pagination v-model="page" :length="pagination.totalPages" :total-visible="7" aria-label="เปลี่ยนหน้าสินค้าในระบบหลังบ้าน" />
+      </div>
+    </v-card>
+
+    <v-card class="app-shell-card admin-table-card mt-6">
+      <div class="dashboard-panel-heading pa-5 pb-2"><div class="text-overline primary--text">INVENTORY AUDIT</div><h2 class="section-heading">ประวัติปรับสต็อกล่าสุด</h2></div>
+      <v-data-table :headers="adjustmentHeaders" :items="adjustments" :items-per-page="10" hide-default-footer class="admin-data-table" no-data-text="ยังไม่มีประวัติปรับสต็อก">
+        <template v-slot:item.product="{ item }">{{ item.product?.name || 'สินค้าไม่พบ' }}</template>
+        <template v-slot:item.quantityDelta="{ item }"><strong :class="item.quantityDelta > 0 ? 'success--text' : 'error--text'">{{ item.quantityDelta > 0 ? '+' : '' }}{{ item.quantityDelta }}</strong></template>
+        <template v-slot:item.stockRange="{ item }">{{ item.stockBefore }} → {{ item.stockAfter }}</template>
+        <template v-slot:item.actor="{ item }">{{ item.actor?.name || item.actor?.email || 'ผู้ใช้ไม่พบ' }}</template>
+        <template v-slot:item.createdAt="{ item }">{{ formatDate(item.createdAt) }}</template>
       </v-data-table>
     </v-card>
 
@@ -95,6 +112,18 @@
         <v-card-actions><v-spacer /><v-btn text @click="deleteDialog = false">ยกเลิก</v-btn><v-btn color="error" :loading="deletingNow" @click="remove">เก็บเข้าคลัง</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
+    <v-dialog v-model="adjustmentDialog" max-width="520">
+      <v-card class="app-shell-card admin-dialog-card">
+        <v-card-title>ปรับสต็อกสินค้า</v-card-title>
+        <v-card-text>
+          <p class="mb-1"><strong>{{ adjustmentProduct?.name }}</strong> · คงเหลือ {{ adjustmentProduct?.stock }} ชิ้น</p>
+          <v-text-field v-model.number="adjustment.delta" type="number" step="1" label="จำนวนที่ปรับ (+ เพิ่ม / − ลด)" :rules="[adjustmentDeltaRule]" outlined dense />
+          <v-textarea v-model="adjustment.reason" label="เหตุผลในการปรับ" :rules="[adjustmentReasonRule]" rows="2" outlined dense />
+          <v-alert v-if="adjustmentError" dense type="error" outlined>{{ adjustmentError }}</v-alert>
+        </v-card-text>
+        <v-card-actions><v-spacer /><v-btn text @click="adjustmentDialog = false">ยกเลิก</v-btn><v-btn color="primary" :loading="savingAdjustment" @click="adjustStock">บันทึกการปรับ</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-snackbar v-model="snackbar" :color="snackbarColor">{{ snackbarText }}</v-snackbar>
   </div>
 </template>
@@ -103,6 +132,7 @@
 import ProductForm from '../components/products/ProductForm.vue';
 import { getApiError } from '../services/api';
 import categoryService from '../services/categoryService';
+import inventoryService from '../services/inventoryService';
 
 export default {
   name: 'AdminProductsView',
@@ -116,19 +146,39 @@ export default {
     deletingNow: false,
     search: '',
     stockFilter: 'all',
+    sortBy: 'newest',
+    sortOptions: [
+      { text: 'เพิ่มล่าสุด', value: 'newest' }, { text: 'เพิ่มเก่าสุด', value: 'oldest' },
+      { text: 'ชื่อ ก-ฮ', value: 'name-asc' }, { text: 'ชื่อ ฮ-ก', value: 'name-desc' },
+      { text: 'ราคาต่ำไปสูง', value: 'price-asc' }, { text: 'ราคาสูงไปต่ำ', value: 'price-desc' },
+    ],
+    page: 1,
+    pageSize: 25,
+    searchTimer: null,
     lowStockThreshold: 5,
     error: '',
     snackbar: false,
     snackbarText: '',
     snackbarColor: 'success',
     categories: [],
+    adjustments: [],
+    adjustmentProduct: null,
+    adjustmentDialog: false,
+    savingAdjustment: false,
+    adjustmentError: '',
+    adjustment: { delta: 1, reason: '' },
+    adjustmentHeaders: [
+      { text: 'สินค้า', value: 'product' }, { text: 'เปลี่ยนแปลง', value: 'quantityDelta' },
+      { text: 'ก่อน → หลัง', value: 'stockRange' }, { text: 'ผู้ดำเนินการ', value: 'actor' },
+      { text: 'เหตุผล', value: 'reason' }, { text: 'เวลา', value: 'createdAt' },
+    ],
     headers: [
-      { text: 'สินค้า', value: 'name' },
+      { text: 'สินค้า', value: 'name', sortable: false },
       { text: 'หมวดหมู่', value: 'category', sortable: false },
-      { text: 'ราคา', value: 'price' },
-      { text: 'สต็อก', value: 'stock' },
+      { text: 'ราคา', value: 'price', sortable: false },
+      { text: 'สต็อก', value: 'stock', sortable: false },
       { text: 'สถานะ', value: 'isArchived', sortable: false },
-      { text: 'สร้างเมื่อ', value: 'createdAt' },
+      { text: 'สร้างเมื่อ', value: 'createdAt', sortable: false },
       { text: 'การจัดการ', value: 'actions', sortable: false, align: 'right' },
     ],
   }),
@@ -148,31 +198,17 @@ export default {
     loading() {
       return this.$store.state.products.loading;
     },
-    lowStockProducts() {
-      return this.products.filter((product) => Number(product.stock) > 0 && Number(product.stock) <= this.lowStockThreshold);
+    pagination() {
+      return this.$store.state.products.pagination;
     },
-    lowStockSummary() {
-      const names = this.lowStockProducts.slice(0, 3).map((product) => product.name).join(', ');
-      const remaining = this.lowStockProducts.length - 3;
-      return `${names}${remaining > 0 ? ` และอีก ${remaining} รายการ` : ''}`;
+    summary() {
+      return this.$store.state.products.summary || { activeProductCount: 0, archivedProductCount: 0, lowStockCount: 0, outOfStockCount: 0 };
     },
     normalStockCount() {
-      return this.products.filter((product) => Number(product.stock) > this.lowStockThreshold).length;
+      return Math.max(0, this.summary.activeProductCount - this.summary.lowStockCount - this.summary.outOfStockCount);
     },
     outOfStockCount() {
-      return this.products.filter((product) => Number(product.stock) <= 0).length;
-    },
-    filteredProducts() {
-      const keyword = this.search.trim().toLowerCase();
-      return this.products.filter((product) => {
-        const stock = Number(product.stock);
-        const matchesStock = this.stockFilter === 'all' ||
-          (this.stockFilter === 'normal' && stock > this.lowStockThreshold) ||
-          (this.stockFilter === 'low' && stock > 0 && stock <= this.lowStockThreshold) ||
-          (this.stockFilter === 'out' && stock <= 0);
-        const matchesSearch = !keyword || `${product.name} ${product.description || ''}`.toLowerCase().includes(keyword);
-        return matchesStock && matchesSearch;
-      });
+      return this.summary.outOfStockCount;
     },
     productEmptyText() {
       if (this.search) return 'ไม่พบสินค้าที่ตรงกับคำค้นหา';
@@ -183,7 +219,20 @@ export default {
     },
   },
   created() {
+    if (['normal', 'low', 'out'].includes(this.$route.query.stock)) this.stockFilter = this.$route.query.stock;
     this.load();
+  },
+  beforeDestroy() { clearTimeout(this.searchTimer); },
+  watch: {
+    search() {
+      clearTimeout(this.searchTimer);
+      this.page = 1;
+      this.searchTimer = setTimeout(() => this.loadProducts(), 250);
+    },
+    stockFilter() { this.page = 1; this.loadProducts(); },
+    sortBy() { this.page = 1; this.loadProducts(); },
+    page() { this.loadProducts(); },
+    '$route.query.stock'(value) { if (['all', 'normal', 'low', 'out'].includes(value)) this.stockFilter = value; },
   },
   methods: {
     setStockFilter(filter) {
@@ -194,14 +243,30 @@ export default {
       if (Number(stock) <= this.lowStockThreshold) return `ใกล้หมด · ${stock}`;
       return `ปกติ · ${stock}`;
     },
+    number(value) { return new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(value || 0); },
+    async loadProducts() {
+      try {
+        await this.$store.dispatch('products/fetchProducts', {
+          includeArchived: true, paged: 'true', page: this.page, limit: this.pageSize,
+          stockStatus: this.stockFilter, sort: this.sortBy,
+          ...(this.search.trim() ? { q: this.search.trim() } : {}),
+        });
+        const pagination = this.$store.state.products.pagination;
+        if (pagination && this.page !== pagination.page) this.page = pagination.page;
+      } catch (error) {
+        this.error = getApiError(error, 'ค้นหาสินค้าไม่สำเร็จ');
+      }
+    },
     async load() {
       this.error = '';
       try {
-        const [, { data }] = await Promise.all([
-          this.$store.dispatch('products/fetchProducts', { includeArchived: true }),
+        const [, { data }, adjustmentResponse] = await Promise.all([
+          this.loadProducts(),
           categoryService.list(),
+          inventoryService.listAdjustments({ limit: 10 }),
         ]);
         this.categories = (data.data || []).filter((category) => category.isActive);
+        this.adjustments = adjustmentResponse.data.data.items || [];
       } catch (error) {
         this.error = getApiError(error, 'โหลดสินค้าไม่สำเร็จ');
       }
@@ -217,6 +282,30 @@ export default {
       };
       this.dialog = true;
     },
+    openAdjustment(product) {
+      this.adjustmentProduct = product;
+      this.adjustment = { delta: 1, reason: '' };
+      this.adjustmentError = '';
+      this.adjustmentDialog = true;
+    },
+    adjustmentDeltaRule(value) { return Number.isInteger(Number(value)) && Number(value) !== 0 || 'ระบุจำนวนเต็มที่ไม่ใช่ 0'; },
+    adjustmentReasonRule(value) { return typeof value === 'string' && value.trim().length >= 3 || 'ระบุเหตุผลอย่างน้อย 3 ตัวอักษร'; },
+    async adjustStock() {
+      this.adjustmentError = '';
+      if (this.adjustmentDeltaRule(this.adjustment.delta) !== true || this.adjustmentReasonRule(this.adjustment.reason) !== true) {
+        this.adjustmentError = 'ตรวจสอบจำนวนและเหตุผลในการปรับสต็อก';
+        return;
+      }
+      this.savingAdjustment = true;
+      try {
+        await inventoryService.adjust({ product: this.adjustmentProduct._id, delta: Number(this.adjustment.delta), reason: this.adjustment.reason });
+        this.adjustmentDialog = false;
+        this.showMessage('ปรับสต็อกและบันทึกประวัติแล้ว', 'success');
+        await this.load();
+      } catch (error) {
+        this.adjustmentError = getApiError(error, 'ปรับสต็อกไม่สำเร็จ');
+      } finally { this.savingAdjustment = false; }
+    },
     async save(payload) {
       this.saving = true;
       try {
@@ -228,6 +317,7 @@ export default {
           this.showMessage('เพิ่มสินค้าสำเร็จ', 'success');
         }
         this.dialog = false;
+        await this.load();
       } catch (error) {
         this.showMessage(getApiError(error, 'บันทึกสินค้าไม่สำเร็จ'), 'error');
       } finally {
@@ -244,6 +334,7 @@ export default {
         await this.$store.dispatch('products/deleteProduct', this.deleting._id);
         this.showMessage('ลบสินค้าสำเร็จ', 'success');
         this.deleteDialog = false;
+        await this.load();
       } catch (error) {
         this.showMessage(getApiError(error, 'ลบสินค้าไม่สำเร็จ'), 'error');
       } finally {
@@ -254,6 +345,7 @@ export default {
       try {
         await this.$store.dispatch('products/restoreProduct', product._id);
         this.showMessage('กู้คืนสินค้าสำเร็จ', 'success');
+        await this.load();
       } catch (error) {
         this.showMessage(getApiError(error, 'กู้คืนสินค้าไม่สำเร็จ'), 'error');
       }

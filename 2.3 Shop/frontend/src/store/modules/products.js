@@ -1,9 +1,13 @@
 import productService from '../../services/productService';
 
+let fetchSequence = 0;
+
 const state = {
   items: [],
   loading: false,
   error: '',
+  pagination: null,
+  summary: null,
 };
 
 const mutations = {
@@ -15,6 +19,10 @@ const mutations = {
   },
   SET_ITEMS(currentState, items) {
     currentState.items = items;
+  },
+  SET_LIST_META(currentState, { pagination, summary }) {
+    currentState.pagination = pagination;
+    currentState.summary = summary;
   },
   ADD_ITEM(currentState, item) {
     currentState.items.unshift(item);
@@ -30,17 +38,26 @@ const mutations = {
 
 const actions = {
   async fetchProducts({ commit }, options) {
+    const sequence = ++fetchSequence;
     commit('SET_LOADING', true);
     commit('SET_ERROR', '');
     try {
       const { data } = await productService.list(options);
-      commit('SET_ITEMS', data.data || []);
-      return data.data || [];
+      const result = data.data || [];
+      const items = Array.isArray(result) ? result : result.items || [];
+      if (sequence === fetchSequence) {
+        commit('SET_ITEMS', items);
+        commit('SET_LIST_META', {
+          pagination: Array.isArray(result) ? null : result.pagination || null,
+          summary: Array.isArray(result) ? null : result.summary || null,
+        });
+      }
+      return items;
     } catch (error) {
-      commit('SET_ERROR', error.response?.data?.message || 'โหลดสินค้าไม่สำเร็จ');
+      if (sequence === fetchSequence) commit('SET_ERROR', error.response?.data?.message || 'โหลดสินค้าไม่สำเร็จ');
       throw error;
     } finally {
-      commit('SET_LOADING', false);
+      if (sequence === fetchSequence) commit('SET_LOADING', false);
     }
   },
   async createProduct({ commit }, payload) {

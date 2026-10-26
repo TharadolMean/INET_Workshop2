@@ -6,6 +6,7 @@ const Order = require('../src/models/Order');
 const Wishlist = require('../src/models/Wishlist');
 const Coupon = require('../src/models/Coupon');
 const ProductReview = require('../src/models/ProductReview');
+const InventoryAdjustment = require('../src/models/InventoryAdjustment');
 const { validateProductBody } = require('../src/controllers/product.controller');
 
 test('legacy product documents default to active without a migration', () => {
@@ -46,6 +47,20 @@ test('product specifications accept structured display data without changing leg
   assert.deepEqual(product.specifications.map(({ name, value }) => ({ name, value })), [
     { name: 'Processor', value: '8-core' },
   ]);
+});
+
+test('inventory adjustment history requires an actor, integer delta and valid stock snapshots', async () => {
+  const adjustment = new InventoryAdjustment({
+    product: new mongoose.Types.ObjectId(),
+    actor: new mongoose.Types.ObjectId(),
+    quantityDelta: 2,
+    stockBefore: 3,
+    stockAfter: 5,
+    reason: 'received shipment',
+  });
+  await assert.doesNotReject(adjustment.validate());
+  adjustment.quantityDelta = 0.5;
+  await assert.rejects(adjustment.validate());
 });
 
 test('product API specifications accept JSON and reject invalid or oversized entries', () => {

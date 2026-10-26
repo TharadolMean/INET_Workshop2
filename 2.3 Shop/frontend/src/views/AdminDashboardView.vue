@@ -7,6 +7,7 @@
         <p class="muted-text mb-0">ติดตามคำสั่งซื้อ ลูกค้า สินค้า และสต็อก</p>
       </v-col>
       <v-col cols="auto">
+        <v-btn outlined color="primary" class="mr-2" :loading="exporting" @click="downloadOrdersCsv">ส่งออก Order CSV</v-btn>
         <v-btn icon color="primary" :loading="loading" aria-label="โหลดข้อมูล Dashboard ใหม่" @click="load">
           <v-icon>mdi-refresh</v-icon>
         </v-btn>
@@ -154,7 +155,7 @@
                 <div class="text-overline warning--text">INVENTORY ALERTS</div>
                 <h2 class="section-heading">สินค้าใกล้หมด</h2>
               </div>
-              <v-chip color="warning" small>{{ number(data.metrics.lowStockCount) }} รายการ</v-chip>
+              <div class="d-flex align-center"><v-chip color="warning" small class="mr-2">{{ number(data.metrics.lowStockCount) }} รายการ</v-chip><v-btn small text color="warning" :to="{ name: 'admin-products', query: { stock: 'low' } }">จัดการสต็อก</v-btn></div>
             </div>
             <div class="px-5 pb-4 dashboard-stock-summary">
               <span>หมดสต็อก <strong class="error--text">{{ number(data.metrics.outOfStockCount) }}</strong></span>
@@ -190,6 +191,7 @@
 
 <script>
 import dashboardService from '../services/dashboardService';
+import reportService from '../services/reportService';
 import OrderStatus from '../components/orders/OrderStatus.vue';
 import { getApiError } from '../services/api';
 
@@ -221,6 +223,7 @@ export default {
   data: () => ({
     data: null,
     loading: false,
+    exporting: false,
     error: '',
     fromDate: defaultFromDate(),
     toDate: localDateValue(new Date()),
@@ -277,6 +280,22 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    async downloadOrdersCsv() {
+      this.exporting = true;
+      try {
+        const { data } = await reportService.exportOrders({ from: this.fromDate, to: this.toDate });
+        const url = URL.createObjectURL(data);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `electrohub-orders-${this.fromDate}-to-${this.toDate}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        this.error = getApiError(error, 'ส่งออกรายงานไม่สำเร็จ');
+      } finally { this.exporting = false; }
     },
     number(value) {
       return new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(value || 0);
