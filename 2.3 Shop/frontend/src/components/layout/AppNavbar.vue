@@ -9,6 +9,9 @@
         <span class="brand-name">ElectroHub</span>
       </v-toolbar-title>
       <v-spacer />
+      <v-btn icon class="mr-1" :aria-label="darkTheme ? 'เปลี่ยนเป็นธีมสว่าง' : 'เปลี่ยนเป็นธีมมืด'" @click="toggleTheme">
+        <v-icon>{{ darkTheme ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
+      </v-btn>
       <v-text-field
         v-if="!isAdmin"
         v-model="searchTerm"
@@ -26,7 +29,7 @@
       <div class="d-none d-lg-flex align-center">
         <template v-if="!isAdmin">
           <v-btn text class="nav-link" to="/products">สินค้า</v-btn>
-          <v-btn text class="nav-link" to="/cart">
+          <v-btn text class="nav-link" :to="isAuthenticated ? '/cart' : { name: 'login', query: { redirect: '/cart' } }">
             <v-badge :content="cartCount" :value="cartCount" color="secondary" overlap>
               <v-icon>mdi-cart-outline</v-icon>
             </v-badge>
@@ -44,7 +47,10 @@
       <v-btn v-if="isAuthenticated" icon class="ml-2" aria-label="ออกจากระบบ" @click="logout">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
-      <v-btn v-else outlined color="primary" to="/login">เข้าสู่ระบบ</v-btn>
+      <template v-else>
+        <v-btn text class="d-none d-sm-inline-flex" to="/register">สมัครสมาชิก</v-btn>
+        <v-btn outlined color="primary" to="/login">เข้าสู่ระบบ</v-btn>
+      </template>
     </v-app-bar>
 
     <v-navigation-drawer v-model="drawer" app temporary>
@@ -59,6 +65,17 @@
           </v-list-item-content>
         </v-list-item>
         <v-divider />
+        <v-list-item v-if="!isAdmin" class="py-2">
+          <v-text-field
+            v-model="searchTerm"
+            label="ค้นหาสินค้า"
+            prepend-inner-icon="mdi-magnify"
+            outlined
+            dense
+            hide-details
+            @keyup.enter="searchProducts"
+          />
+        </v-list-item>
         <template v-if="!isAdmin">
           <v-list-item to="/products" @click="drawer = false">
             <v-list-item-icon><v-icon>mdi-storefront-outline</v-icon></v-list-item-icon>
@@ -68,7 +85,7 @@
             <v-list-item-icon><v-icon>mdi-magnify</v-icon></v-list-item-icon>
             <v-list-item-title>ค้นหาสินค้า</v-list-item-title>
           </v-list-item>
-          <v-list-item to="/cart" @click="drawer = false">
+          <v-list-item :to="isAuthenticated ? '/cart' : { name: 'login', query: { redirect: '/cart' } }" @click="drawer = false">
             <v-list-item-icon><v-icon>mdi-cart-outline</v-icon></v-list-item-icon>
             <v-list-item-title>ตะกร้าสินค้า ({{ cartCount }})</v-list-item-title>
           </v-list-item>
@@ -76,6 +93,10 @@
         <v-list-item v-if="isAuthenticated && !isAdmin" to="/my-orders" @click="drawer = false">
           <v-list-item-icon><v-icon>mdi-clipboard-list-outline</v-icon></v-list-item-icon>
           <v-list-item-title>คำสั่งซื้อของฉัน</v-list-item-title>
+        </v-list-item>
+        <v-list-item @click="toggleTheme">
+          <v-list-item-icon><v-icon>{{ darkTheme ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon></v-list-item-icon>
+          <v-list-item-title>{{ darkTheme ? 'ใช้ธีมสว่าง' : 'ใช้ธีมมืด' }}</v-list-item-title>
         </v-list-item>
         <template v-if="isAdmin">
           <v-subheader>การจัดการ</v-subheader>
@@ -88,6 +109,10 @@
           <v-list-item-icon><v-icon>mdi-logout</v-icon></v-list-item-icon>
           <v-list-item-title>ออกจากระบบ</v-list-item-title>
         </v-list-item>
+        <v-list-item v-else to="/login" @click="drawer = false">
+          <v-list-item-icon><v-icon>mdi-login</v-icon></v-list-item-icon>
+          <v-list-item-title>เข้าสู่ระบบ</v-list-item-title>
+        </v-list-item>
       </v-list>
     </v-navigation-drawer>
   </div>
@@ -98,6 +123,9 @@ export default {
   name: 'AppNavbar',
   data: () => ({ drawer: false, searchTerm: '' }),
   computed: {
+    darkTheme() {
+      return this.$vuetify.theme.dark;
+    },
     isAuthenticated() {
       return this.$store.getters['auth/isAuthenticated'];
     },
@@ -112,6 +140,12 @@ export default {
     },
   },
   methods: {
+    toggleTheme() {
+      const dark = !this.$vuetify.theme.dark;
+      this.$vuetify.theme.dark = dark;
+      localStorage.setItem('electrohub_theme', dark ? 'dark' : 'light');
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    },
     searchProducts() {
       this.drawer = false;
       this.$router.push({

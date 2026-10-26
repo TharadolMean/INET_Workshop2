@@ -60,6 +60,9 @@
         <strong>{{ pageTitle }}</strong>
       </div>
       <v-spacer />
+      <v-btn icon class="mr-2" :aria-label="darkTheme ? 'เปลี่ยนเป็นธีมสว่าง' : 'เปลี่ยนเป็นธีมมืด'" @click="toggleTheme">
+        <v-icon>{{ darkTheme ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
+      </v-btn>
       <v-avatar size="34" class="admin-user-avatar mr-2">
         <v-icon small>mdi-account</v-icon>
       </v-avatar>
@@ -93,6 +96,9 @@ export default {
     ],
   }),
   computed: {
+    darkTheme() {
+      return this.$vuetify.theme.dark;
+    },
     isLargeScreen() {
       return this.$vuetify.breakpoint.lgAndUp;
     },
@@ -116,6 +122,12 @@ export default {
     },
   },
   methods: {
+    toggleTheme() {
+      const dark = !this.$vuetify.theme.dark;
+      this.$vuetify.theme.dark = dark;
+      localStorage.setItem('electrohub_theme', dark ? 'dark' : 'light');
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    },
     logout() {
       this.$store.dispatch('auth/logout');
       this.$router.replace({ name: 'login' });

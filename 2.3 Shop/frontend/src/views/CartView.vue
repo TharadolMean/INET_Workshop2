@@ -14,7 +14,11 @@
     </v-row>
 
     <v-alert v-if="error" type="error" outlined class="mb-5">{{ error }}</v-alert>
-    <v-row v-if="items.length">
+    <v-row v-if="validatingCart" aria-label="กำลังตรวจสอบสินค้าในตะกร้า">
+      <v-col cols="12" md="8"><v-skeleton-loader v-for="n in 2" :key="n" type="list-item-avatar-three-line" class="app-shell-card mb-3" /></v-col>
+      <v-col cols="12" md="4"><v-skeleton-loader type="card" class="app-shell-card" /></v-col>
+    </v-row>
+    <v-row v-else-if="items.length">
       <v-col cols="12" md="8">
         <div class="d-flex align-center justify-space-between mb-3">
           <div class="section-heading">รายการสินค้า</div>
@@ -46,7 +50,7 @@
             เลือกซื้อสินค้าต่อ
           </v-btn>
           <div class="caption muted-text mt-3">
-            ระบบจะสร้าง Order เดียวจากรายการทั้งหมด และตรวจสอบสต็อกก่อนสั่งซื้อ
+            ยอดนี้เป็นยอด Order จำลอง ยังไม่มีการชำระเงินจริง ระบบจะตรวจสอบสต็อกก่อนสร้าง Order เดียว
           </div>
         </v-card>
       </v-col>
@@ -91,6 +95,7 @@ export default {
     clearDialog: false,
     checkoutDialog: false,
     checkingOut: false,
+    validatingCart: true,
   }),
   computed: {
     items() {
@@ -108,11 +113,14 @@ export default {
   },
   methods: {
     async validateCart() {
+      this.validatingCart = true;
       try {
         const products = await this.$store.dispatch('products/fetchProducts');
         await this.$store.dispatch('cart/validateWithProducts', products);
       } catch (error) {
         this.error = getApiError(error, 'ตรวจสอบสินค้าในตะกร้าไม่สำเร็จ');
+      } finally {
+        this.validatingCart = false;
       }
     },
     updateQuantity(payload) {

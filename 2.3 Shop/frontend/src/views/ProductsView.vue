@@ -41,7 +41,12 @@
             class="category-tile pa-4 text-center"
             :class="{ 'category-tile--selected': selectedCategory === category._id }"
             flat
+            role="button"
+            tabindex="0"
+            :aria-pressed="selectedCategory === category._id"
             @click="selectCategory(category._id)"
+            @keyup.enter="selectCategory(category._id)"
+            @keyup.space.prevent="selectCategory(category._id)"
           >
             <v-icon color="primary" size="30">{{ categoryIcon(category.slug) }}</v-icon>
             <div class="caption font-weight-medium mt-2">{{ category.name }}</div>
@@ -63,7 +68,7 @@
         <v-col cols="12" md="7">
           <div class="text-overline primary--text">CURATED FOR YOU</div>
           <h2 class="section-heading mb-1">สินค้าทั้งหมด</h2>
-          <p class="muted-text mb-0">{{ visibleProducts.length }} รายการที่พร้อมให้เลือก</p>
+          <p class="muted-text mb-0" aria-live="polite">แสดง {{ visibleProducts.length }} จาก {{ products.length }} รายการ</p>
         </v-col>
         <v-col cols="12" sm="7" md="3">
           <v-text-field
@@ -88,6 +93,15 @@
             dense
             hide-details
           />
+        </v-col>
+        <v-col cols="6" sm="4" md="2">
+          <v-text-field v-model.number="minPrice" label="ราคาต่ำสุด" type="number" min="0" prepend-inner-icon="mdi-currency-thb" outlined dense hide-details />
+        </v-col>
+        <v-col cols="6" sm="4" md="2">
+          <v-text-field v-model.number="maxPrice" label="ราคาสูงสุด" type="number" min="0" prepend-inner-icon="mdi-currency-thb" outlined dense hide-details />
+        </v-col>
+        <v-col cols="12" sm="4" md="2">
+          <v-checkbox v-model="inStockOnly" label="แสดงสินค้าที่มีสต็อก" hide-details class="mt-2" />
         </v-col>
       </v-row>
 
@@ -124,6 +138,9 @@ export default {
   data: () => ({
     search: '',
     selectedCategory: '',
+    minPrice: null,
+    maxPrice: null,
+    inStockOnly: false,
     sortBy: 'newest',
     categories: [],
     error: '',
@@ -149,7 +166,10 @@ export default {
       const filtered = this.products.filter((product) => {
         const searchable = `${product.name} ${product.description} ${product.category?.name || ''}`.toLowerCase();
         return (!keyword || searchable.includes(keyword)) &&
-          (!this.selectedCategory || product.category?._id === this.selectedCategory);
+          (!this.selectedCategory || product.category?._id === this.selectedCategory) &&
+          (this.minPrice === null || this.minPrice === '' || Number(product.price) >= Number(this.minPrice)) &&
+          (this.maxPrice === null || this.maxPrice === '' || Number(product.price) <= Number(this.maxPrice)) &&
+          (!this.inStockOnly || Number(product.stock) > 0);
       });
       return [...filtered].sort((first, second) => {
         if (this.sortBy === 'name-asc') return first.name.localeCompare(second.name, 'th');
@@ -191,6 +211,9 @@ export default {
     resetFilters() {
       this.search = '';
       this.selectedCategory = '';
+      this.minPrice = null;
+      this.maxPrice = null;
+      this.inStockOnly = false;
       this.sortBy = 'newest';
     },
     scrollToProducts() {

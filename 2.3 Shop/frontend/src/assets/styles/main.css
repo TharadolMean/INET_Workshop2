@@ -921,6 +921,124 @@ body {
   }
 }
 
+/* Phase 3 storefront theme and keyboard focus */
+:focus-visible {
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px;
+}
+
+.specification-table th {
+  color: var(--muted);
+  font-weight: 500;
+  text-align: left;
+  width: 38%;
+}
+
+.specification-table td,
+.specification-table th {
+  border-bottom: 1px solid var(--border) !important;
+  padding: 12px 8px !important;
+}
+
+.product-gallery-thumbnails {
+  bottom: 12px;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.product-gallery-thumbnails .v-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.product-gallery-thumbnail--selected {
+  border: 2px solid var(--primary) !important;
+}
+
+html[data-theme='dark'] {
+  --page-bg: #111322;
+  --card-bg: #1c2033;
+  --muted: #a4acc3;
+  --text: #edf0fb;
+  --primary: #a69bff;
+  --primary-dark: #8275f2;
+  --accent: #ff9979;
+  --teal: #49d5cb;
+  --border: #343951;
+  --soft-blue: #292d48;
+  --soft-orange: #3b2c31;
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] body {
+  background:
+    radial-gradient(ellipse at 6% 4%, rgba(125, 110, 255, 0.12), transparent 30rem),
+    radial-gradient(ellipse at 96% 28%, rgba(255, 153, 112, 0.08), transparent 26rem),
+    var(--page-bg);
+  color: var(--text);
+}
+
+html[data-theme='dark'] .v-application,
+html[data-theme='dark'] .v-card,
+html[data-theme='dark'] .v-footer,
+html[data-theme='dark'] .v-navigation-drawer,
+html[data-theme='dark'] .v-menu__content,
+html[data-theme='dark'] .v-dialog > .v-card,
+html[data-theme='dark'] .v-data-table,
+html[data-theme='dark'] .v-input__slot {
+  background-color: var(--card-bg) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme='dark'] .v-app-bar {
+  background: rgba(28, 32, 51, 0.94) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme='dark'] .brand-name,
+html[data-theme='dark'] .page-title,
+html[data-theme='dark'] .section-heading,
+html[data-theme='dark'] .dashboard-stat-value,
+html[data-theme='dark'] .admin-stat-value,
+html[data-theme='dark'] .product-title {
+  color: var(--text) !important;
+}
+
+html[data-theme='dark'] .v-data-table > .v-data-table__wrapper > table > thead > tr > th {
+  background: #252a42;
+  color: #d6dbec !important;
+}
+
+html[data-theme='dark'] .v-data-table > .v-data-table__wrapper > table > tbody > tr:hover,
+html[data-theme='dark'] .category-tile--selected {
+  background: var(--soft-blue) !important;
+}
+
+html[data-theme='dark'] .hero-panel {
+  background:
+    radial-gradient(circle at 80% 18%, rgba(91, 75, 219, 0.5), transparent 28%),
+    radial-gradient(circle at 70% 100%, rgba(21, 185, 172, 0.2), transparent 34%),
+    linear-gradient(118deg, #17152e 0%, #29265a 48%, #1d425f 100%);
+}
+
+html[data-theme='dark'] .empty-state,
+html[data-theme='dark'] .summary-card {
+  background: linear-gradient(145deg, #1c2033, #252743) !important;
+}
+
+html[data-theme='dark'] .v-btn--text,
+html[data-theme='dark'] .dashboard-status-row span {
+  color: #c2c8da !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+}
+
 /* Phase 2 admin dashboard */
 .dashboard-stat-card { min-height: 158px; padding: 20px; position: relative; overflow: hidden; }
 .dashboard-stat-icon { align-items: center; border-radius: 12px; display: flex; height: 42px; justify-content: center; margin-bottom: 15px; width: 42px; }

@@ -29,8 +29,10 @@ app.use((_req, res) => r.badRequest(res, 'route not found'));
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
   if (err.type === 'entity.parse.failed') return r.badRequest(res, 'invalid JSON body');
-  if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-    return r.badRequest(res, 'รูปภาพต้องมีขนาดไม่เกิน 5 MB');
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') return r.badRequest(res, 'รูปภาพต้องมีขนาดไม่เกิน 5 MB');
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') return r.badRequest(res, 'รองรับรูปสินค้าได้ไม่เกิน 8 ภาพ');
+    return r.badRequest(res, 'ข้อมูลรูปภาพไม่ถูกต้อง');
   }
   if (err.message === 'รูปภาพต้องเป็น JPG, PNG หรือ WebP เท่านั้น') {
     return r.badRequest(res, err.message);

@@ -38,4 +38,9 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, requireAdmin };
+const optionalAuthenticate = (req, res, next) => {
+  if (!req.headers.authorization) return next();
+  return authenticate(req, res, next);
+};
+
+module.exports = { authenticate, optionalAuthenticate, requireAdmin };

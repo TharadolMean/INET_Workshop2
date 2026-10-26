@@ -5,7 +5,7 @@
         <v-avatar color="primary" size="58"><v-icon>mdi-lightning-bolt</v-icon></v-avatar>
         <div class="text-overline primary--text mt-8">WELCOME TO ELECTROHUB</div>
         <h1 class="display-1 font-weight-bold mt-2">เทคโนโลยีที่ใช่ เริ่มต้นที่นี่</h1>
-        <p class="muted-text mt-4 mb-0">เข้าสู่ระบบเพื่อเลือกดูสินค้า จัดการตะกร้า และสั่งซื้อได้อย่างสะดวก</p>
+        <p class="muted-text mt-4 mb-0">เลือกดูสินค้าได้ทันที เข้าสู่ระบบเมื่อพร้อมจัดการตะกร้าและสั่งซื้อ</p>
       </div>
     </v-col>
     <v-col cols="12" sm="10" md="5" lg="4">
@@ -13,7 +13,7 @@
         <div class="mb-6">
           <div class="text-overline primary--text">ACCOUNT ACCESS</div>
           <h1 class="page-title mt-2">ยินดีต้อนรับกลับ</h1>
-          <p class="muted-text mb-0">เข้าสู่ ElectroHub เพื่อเริ่มเลือกซื้อสินค้า</p>
+          <p class="muted-text mb-0">เข้าสู่ระบบเพื่อจัดการตะกร้าและสั่งซื้อสินค้า</p>
         </div>
         <v-alert v-if="error" type="error" dense>{{ error }}</v-alert>
         <v-form ref="form" @submit.prevent="submit">

@@ -16,8 +16,9 @@ const findDuplicate = async (name, slug, id) => {
   return Category.findOne(query);
 };
 
-exports.list = async (_req, res) => {
-  const categories = await Category.find().sort({ isActive: -1, name: 1 });
+exports.list = async (req, res) => {
+  const filter = req.user?.role === 'admin' ? {} : { isActive: true };
+  const categories = await Category.find(filter).sort({ isActive: -1, name: 1 });
   return r.ok(res, categories);
 };
 

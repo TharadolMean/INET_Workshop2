@@ -110,12 +110,17 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - ดูประวัติและรายละเอียด Order ของตัวเอง
 - ติดตามสถานะ Order และประวัติการเปลี่ยนสถานะ
 - ยกเลิก Order ของตัวเองได้ก่อนเริ่มจัดเตรียมสินค้า โดยระบบคืนสต็อกให้ครั้งเดียว
+- เลือกดูสินค้าและหมวดหมู่ที่เปิดใช้งานได้โดยไม่ต้อง login; ต้อง login และได้รับอนุมัติก่อนใช้ตะกร้าและสั่งซื้อ
+- กรองสินค้าได้ตามหมวดหมู่ คำค้นหา ช่วงราคา สต็อก และการเรียงลำดับ
+- ดูภาพสินค้าแบบแกลเลอรี ข้อมูลจำเพาะ และสินค้าในหมวดหมู่เดียวกัน
+- สลับธีมมืด/สว่างได้ทั้งหน้าร้านและแอดมิน โดยจำค่าบน Browser
 
 ### Admin
 
 - ดู Dashboard สรุป Order มูลค่า Order จำลอง ลูกค้า สินค้า/สต็อก Order ล่าสุด สินค้าขายดี สถานะ และแนวโน้มรายวัน/เดือน พร้อมตัวกรองวันที่
 - Dashboard แสดงสต็อกต่ำเฉพาะสินค้าที่เปิดขาย; Order ยกเลิกไม่ถูกรวมในมูลค่า Order หรือยอดขายสินค้า
 - เพิ่มและแก้ไขสินค้า; การลบจะเก็บสินค้าเข้าคลัง (archive) และกู้คืนได้
+- จัดการรูปสินค้าได้สูงสุด 8 ภาพ และบันทึกข้อมูลจำเพาะแบบชื่อ/ค่า
 - สินค้าที่ archive จะไม่แสดงหน้าร้าน และ Order เก่าจะไม่ถูกลบ
 - ค้นหาสินค้าและดูการแจ้งเตือนสินค้าเหลือไม่เกิน 5 ชิ้น
 - ดูจำนวนสินค้าทั้งหมด สต็อกปกติ ใกล้หมด และหมดสต็อก พร้อมกรองตารางตามสต็อก
@@ -150,7 +155,7 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 
 ทุก API response ใช้รูปแบบ `{ status, message, data }` และ Frontend อ่านข้อมูลจาก `response.data.data`
 
-`GET /orders/mine` แสดงเฉพาะ Order ของผู้ใช้ที่ login อยู่ โดยอ้างอิง user จาก JWT ส่วน `GET /orders` ใช้สำหรับ Admin ดู Order ทั้งหมด
+`GET /products`, `GET /products/:id` และ `GET /categories` เปิดให้อ่าน catalog ที่เปิดใช้งานได้โดยไม่ต้อง login และรองรับ optional JWT เพื่อคงสิทธิ์ดูรายการ archive ให้ Admin; การเขียนข้อมูลและ Order ยังคงต้องผ่าน authentication, approval และ role check เดิม `GET /orders/mine` แสดงเฉพาะ Order ของผู้ใช้ที่ login อยู่ โดยอ้างอิง user จาก JWT ส่วน `GET /orders` ใช้สำหรับ Admin ดู Order ทั้งหมด
 
 Dashboard ใช้ MongoDB aggregation และช่วงวันที่ UTC (ค่าเริ่มต้น 30 วันล่าสุด, สูงสุด 10 ปี; กราฟรายวันจำกัดไม่เกิน 366 วัน) มูลค่า Order คำนวณจาก `totalPrice` และไม่นับ Order ที่ยกเลิก จึงเป็นมูลค่า Order จำลอง ไม่ใช่รายได้ที่รับชำระแล้ว จำนวนลูกค้ารวมผู้ใช้ role `user` ทั้งหมด และสินค้า/สต็อกบน Dashboard นับเฉพาะ Product ที่ไม่ archive
 
@@ -189,3 +194,4 @@ Postman collection อยู่ที่ `backend/postman/Workshop_1.postman_col
 - Cart เป็น Local Storage แยกตามบัญชีใน Browser ปัจจุบัน ยังไม่มี Cart API สำหรับ sync ข้ามอุปกรณ์
 - รูปสินค้าจัดเก็บในเครื่องผ่าน Multer; ค่าชนิดไฟล์ตรวจจาก MIME metadata และยังไม่มี content sniffing
 - การ archive Product คงเอกสาร Product และ Order ไว้ใน MongoDB โดยไม่ต้อง migration; ฟิลด์ archive ของเอกสารเก่าจะถือว่า active
+- Product schema เพิ่ม `specifications` และ `images` แบบ optional/default ว่าง โดยเก็บ `image` เดิมไว้รองรับ record และ client เก่า ไม่ต้อง migration; gallery ใช้รูปที่ upload ในเครื่องเท่านั้น

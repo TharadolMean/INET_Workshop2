@@ -7,7 +7,11 @@ const toFormData = (payload) => {
   Object.entries(payload || {}).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
       if (key === 'image' && !(value instanceof File)) return;
-      formData.append(key, value);
+        if (key === 'images' && Array.isArray(value)) {
+          value.forEach((file) => formData.append('images', file));
+          return;
+        }
+      formData.append(key, key === 'specifications' && typeof value !== 'string' ? JSON.stringify(value) : value);
     }
   });
   return formData;

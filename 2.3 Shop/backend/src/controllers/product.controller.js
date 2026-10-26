@@ -18,6 +18,16 @@ const validateProductBody = (body, { partial = false } = {}) => {
   if (stock !== undefined && (!Number.isInteger(Number(stock)) || Number(stock) < 0)) {
     return 'stock must be an integer >= 0';
   }
+  if (body.specifications !== undefined) {
+    let specifications = body.specifications;
+    if (typeof specifications === 'string') {
+      try { specifications = JSON.parse(specifications); } catch { return 'specifications must be a JSON array'; }
+    }
+    if (!Array.isArray(specifications) || specifications.length > 30 || specifications.some((entry) =>
+      !entry || typeof entry.name !== 'string' || !entry.name.trim() || entry.name.length > 80 ||
+      typeof entry.value !== 'string' || !entry.value.trim() || entry.value.length > 300
+    )) return 'specifications must contain valid name and value entries';
+  }
   return null;
 };
 
@@ -34,6 +44,16 @@ const imageFromFile = (file) => (file ? {
   mimeType: file.mimetype,
   size: file.size,
 } : null);
+
+const filesFromRequest = (req) => [
+  ...(req.files?.images || []),
+  ...(req.files?.image || []),
+].map(imageFromFile).filter(Boolean);
+
+const existingImages = (product) => [
+  ...(product.images || []),
+  ...(product.image?.filename ? [product.image] : []),
+].filter((image, index, images) => image.filename && images.findIndex((entry) => entry.filename === image.filename) === index);
 
 const removeImageFile = async (image) => {
   if (!image?.filename) return;
@@ -63,63 +83,101 @@ exports.getOne = async (req, res) => {
 
 // POST /api/v1/products
 exports.create = async (req, res) => {
+  const images = filesFromRequest(req);
   const error = validateProductBody(req.body);
-  if (error) return r.badRequest(res, error);
+  if (error) {
+    await Promise.all(images.map(removeImageFile));
+    return r.badRequest(res, error);
+  }
 
   const category = await getCategory(req.body.category);
-  if (req.body.category && !category) return r.badRequest(res, 'category not found or inactive');
+  if (req.body.category && !category) {
+    await Promise.all(images.map(removeImageFile));
+    return r.badRequest(res, 'category not found or inactive');
+  }
 
-  const image = imageFromFile(req.file);
+  if (images.length > 8) {
+    await Promise.all(images.map(removeImageFile));
+    return r.badRequest(res, 'up to 8 product images are allowed');
+  }
+  const image = images[0] || null;
+  let specifications = req.body.specifications;
+  if (typeof specifications === 'string') specifications = JSON.parse(specifications);
   try {
     const product = await Product.create({
       name: req.body.name,
       description: req.body.description,
+      specifications,
       price: Number(req.body.price),
       stock: Number(req.body.stock || 0),
       category: category?._id || null,
       image: image || undefined,
+      images,
     });
     await product.populate('category', 'name slug isActive');
     return r.created(res, product);
   } catch (createError) {
-    await removeImageFile(image);
+    await Promise.all(images.map(removeImageFile));
     throw createError;
   }
 };
 
 // PUT /api/v1/products/:id
 exports.update = async (req, res) => {
+  const images = filesFromRequest(req);
   const error = validateProductBody(req.body, { partial: true });
-  if (error) return r.badRequest(res, error);
+  if (error) {
+    await Promise.all(images.map(removeImageFile));
+    return r.badRequest(res, error);
+  }
 
   const product = await Product.findById(req.params.id);
-  if (!product) return r.badRequest(res, 'product not found');
+  if (!product) {
+    await Promise.all(images.map(removeImageFile));
+    return r.badRequest(res, 'product not found');
+  }
 
-  const oldImage = product.image;
+  const oldImages = existingImages(product);
   const category = await getCategory(req.body.category);
   if (req.body.category !== undefined && req.body.category !== '' && !category) {
+    await Promise.all(images.map(removeImageFile));
     return r.badRequest(res, 'category not found or inactive');
   }
 
   const update = {};
   if (req.body.name !== undefined) update.name = req.body.name;
   if (req.body.description !== undefined) update.description = req.body.description;
+  if (req.body.specifications !== undefined) {
+    update.specifications = typeof req.body.specifications === 'string'
+      ? JSON.parse(req.body.specifications)
+      : req.body.specifications;
+  }
   if (req.body.price !== undefined) update.price = Number(req.body.price);
   if (req.body.stock !== undefined) update.stock = Number(req.body.stock);
   if (req.body.category !== undefined) update.category = category?._id || null;
 
   Object.assign(product, update);
-  if (req.file) product.image = imageFromFile(req.file);
-  if (req.body.removeImage === 'true') product.image = {};
+  if (images.length > 8) {
+    await Promise.all(images.map(removeImageFile));
+    return r.badRequest(res, 'up to 8 product images are allowed');
+  }
+  if (images.length) {
+    product.images = images;
+    product.image = images[0];
+  }
+  if (req.body.removeImage === 'true' && !images.length) {
+    product.images = [];
+    product.image = {};
+  }
 
   try {
     await product.save();
   } catch (updateError) {
-    await removeImageFile(imageFromFile(req.file));
+    await Promise.all(images.map(removeImageFile));
     throw updateError;
   }
 
-  if (req.file || req.body.removeImage === 'true') await removeImageFile(oldImage);
+  if (images.length || req.body.removeImage === 'true') await Promise.all(oldImages.map(removeImageFile));
   await product.populate('category', 'name slug isActive');
   return r.ok(res, product);
 };
@@ -145,3 +203,5 @@ exports.restore = async (req, res) => {
   if (!product) return r.badRequest(res, 'archived product not found');
   return r.ok(res, product, 'restored');
 };
+
+exports.validateProductBody = validateProductBody;

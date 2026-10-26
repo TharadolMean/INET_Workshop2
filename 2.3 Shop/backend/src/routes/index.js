@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { authenticate, requireAdmin } = require('../middlewares/auth');
+const { authenticate, optionalAuthenticate, requireAdmin } = require('../middlewares/auth');
 const validateId = require('../middlewares/validateId');
 const { upload } = require('../middlewares/uploadProductImage');
 
@@ -13,6 +13,11 @@ const dashboard = require('../controllers/dashboard.controller');
 // Auth (public)
 router.post('/register', auth.register);
 router.post('/login', auth.login);
+
+// Public catalog reads; purchasing, cart state and administration remain protected.
+router.get('/products', optionalAuthenticate, product.list);
+router.get('/products/:id', optionalAuthenticate, validateId, product.getOne);
+router.get('/categories', optionalAuthenticate, category.list);
 
 // ต้อง login และถูก Approve แล้วเท่านั้น
 router.use(authenticate);
@@ -31,15 +36,13 @@ router.get('/inventory/movements', requireAdmin, order.listInventoryMovements);
 router.get('/admin/dashboard', requireAdmin, dashboard.getOverview);
 
 // Products (ทุก role อ่านได้, admin เท่านั้นที่จัดการ)
-router.get('/products', product.list);
-router.post('/products', requireAdmin, upload.single('image'), product.create);
-router.get('/products/:id', validateId, product.getOne);
-router.put('/products/:id', requireAdmin, validateId, upload.single('image'), product.update);
+const productImages = upload.fields([{ name: 'image', maxCount: 1 }, { name: 'images', maxCount: 8 }]);
+router.post('/products', requireAdmin, productImages, product.create);
+router.put('/products/:id', requireAdmin, validateId, productImages, product.update);
 router.post('/products/:id/restore', requireAdmin, validateId, product.restore);
 router.delete('/products/:id', requireAdmin, validateId, product.remove);
 
 // Categories (ทุก role อ่านได้, admin เท่านั้นที่จัดการ)
-router.get('/categories', category.list);
 router.post('/categories', requireAdmin, category.create);
 router.put('/categories/:id', requireAdmin, validateId, category.update);
 router.delete('/categories/:id', requireAdmin, validateId, category.remove);

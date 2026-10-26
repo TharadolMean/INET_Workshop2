@@ -26,12 +26,12 @@ const router = new Router({
     },
     { path: '/login', name: 'login', component: LoginView, meta: { guest: true } },
     { path: '/register', name: 'register', component: RegisterView, meta: { guest: true } },
-    { path: '/products', name: 'products', component: ProductsView, meta: { requiresAuth: true, requiresCustomer: true } },
+    { path: '/products', name: 'products', component: ProductsView },
     {
       path: '/products/:id',
       name: 'product-detail',
       component: ProductDetailView,
-      meta: { requiresAuth: true, requiresCustomer: true },
+      meta: {},
     },
     { path: '/cart', name: 'cart', component: CartView, meta: { requiresAuth: true, requiresCustomer: true } },
     {

@@ -46,6 +46,9 @@ import {
 } from 'vuetify/lib/components';
 import { Ripple } from 'vuetify/lib/directives';
 
+const storedTheme = localStorage.getItem('electrohub_theme') === 'dark' ? 'dark' : 'light';
+document.documentElement.dataset.theme = storedTheme;
+
 const components = {
   VAlert,
   VApp,
@@ -94,7 +97,7 @@ Vue.use(Vuetify, { components, directives: { Ripple } });
 
 export default new Vuetify({
   theme: {
-    dark: false,
+    dark: storedTheme === 'dark',
     themes: {
       light: {
         primary: '#5b4bdb',
@@ -106,6 +109,17 @@ export default new Vuetify({
         success: '#168c78',
         info: '#278eaa',
         warning: '#e49a24',
+      },
+      dark: {
+        primary: '#a69bff',
+        secondary: '#ff9979',
+        accent: '#49d5cb',
+        background: '#111322',
+        surface: '#1c2033',
+        error: '#ff7188',
+        success: '#50c9a6',
+        info: '#64c8e4',
+        warning: '#ffc15c',
       },
     },
   },

@@ -1,6 +1,6 @@
 <template>
   <v-card class="product-card app-shell-card d-flex flex-column">
-    <v-img :src="image || undefined" height="220" class="product-image" @error="imageFailed = true">
+    <v-img :src="image || undefined" :alt="`รูปสินค้า ${product.name}`" height="220" class="product-image" @error="imageFailed = true">
       <div class="fill-height d-flex align-center justify-center">
         <v-icon v-if="!image || imageFailed" class="product-fallback-icon" size="72">mdi-circuit-board</v-icon>
       </div>
@@ -25,8 +25,18 @@
         ดูรายละเอียด
       </v-btn>
       <v-spacer />
-      <v-btn icon color="primary" :disabled="product.stock < 1" aria-label="เพิ่มลงตะกร้า" @click="$emit('add', product)">
+      <v-btn
+        v-if="isAuthenticated"
+        icon
+        color="primary"
+        :disabled="product.stock < 1"
+        :aria-label="`เพิ่ม ${product.name} ลงตะกร้า`"
+        @click="$emit('add', product)"
+      >
         <v-icon>mdi-cart-plus</v-icon>
+      </v-btn>
+      <v-btn v-else icon color="primary" :to="{ name: 'login', query: { redirect: '/cart' } }" :aria-label="`เข้าสู่ระบบเพื่อซื้อ ${product.name}`">
+        <v-icon>mdi-login</v-icon>
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -40,6 +50,9 @@ export default {
     product: { type: Object, required: true },
   },
   computed: {
+    isAuthenticated() {
+      return this.$store.getters['auth/isAuthenticated'];
+    },
     image() {
       return (this.product.image && this.product.image.path) || '';
     },

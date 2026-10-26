@@ -109,9 +109,12 @@
 
 ## Phase 3 — Storefront and admin UX
 
-- Preserve the ElectroHub identity while improving responsive navigation, product discovery, filters, details/gallery/specifications, related products, cart and checkout.
-- Add consistent loading, empty and error states, accessible controls, and dark/light theme support.
-- Separate the admin shell from the customer storefront. Consider guest product/category browsing while keeping checkout and restricted operations authenticated and preserving admin approval.
+- Implemented responsive catalog discovery with name/description/category search, category selection, sorting, price range and in-stock filters; added keyboard-accessible category controls and live result counts.
+- Product details show real uploaded gallery images, structured specifications and related products from the catalog. Legacy `image` remains the primary-image field while the additive `images` array supports up to eight new gallery uploads; existing records need no migration.
+- Catalog and active category reads are public through optional JWT authentication. Archived products remain admin-only through the existing `includeArchived=true` behavior; basket, checkout, orders and admin operations remain protected by existing authentication and approval checks.
+- Added persistent light/dark theme controls in storefront and admin shells, accessible image descriptions and controls, and retained existing loading/error/empty and cart/checkout feedback states.
+- Product form and backend validation accept up to 30 structured `{ name, value }` specifications and up to eight gallery files. Existing single-image clients remain accepted through the legacy `image` upload field.
+- Phase 3 manual verification: browse catalog while logged out; verify archived items do not appear; try catalog filters; open a multi-image product and cycle thumbnails; check specs/related products; switch theme on desktop/mobile and reload; log in as an approved customer and verify cart/checkout still require auth; try protected APIs while logged out and verify they remain unauthorized.
 
 ## Phase 4 — Customer features
 

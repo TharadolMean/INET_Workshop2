@@ -3,7 +3,7 @@
     <v-card-text>
       <v-row align="center">
         <v-col cols="12" sm="2">
-          <v-img v-if="imagePath && !imageFailed" :src="imagePath" height="72" contain @error="imageFailed = true" />
+          <v-img v-if="imagePath && !imageFailed" :src="imagePath" :alt="`รูปสินค้า ${item.product.name}`" height="72" contain @error="imageFailed = true" />
           <div v-else class="product-image d-flex align-center justify-center" style="height: 72px;">
             <v-icon>mdi-circuit-board</v-icon>
           </div>
@@ -31,7 +31,7 @@
           <div class="caption muted-text">บาท</div>
         </v-col>
         <v-col cols="12" sm="1" class="text-right">
-          <v-btn icon color="error" @click="$emit('remove', item.product._id)">
+          <v-btn icon color="error" :aria-label="`นำ ${item.product.name} ออกจากตะกร้า`" @click="$emit('remove', item.product._id)">
             <v-icon>mdi-delete-outline</v-icon>
           </v-btn>
         </v-col>
