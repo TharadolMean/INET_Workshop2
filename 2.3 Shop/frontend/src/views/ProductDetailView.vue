@@ -42,6 +42,7 @@
               {{ (product.category && product.category.name) || 'อุปกรณ์อิเล็กทรอนิกส์' }}
             </div>
             <h1 class="page-title">{{ product.name }}</h1>
+            <v-btn v-if="isCustomer" text color="secondary" class="mt-2" @click="addToWishlist(product)"><v-icon left>mdi-heart-plus-outline</v-icon>บันทึกในรายการโปรด</v-btn>
             <div class="price-text my-6">{{ formatPrice(product.price) }} บาท</div>
             <p class="muted-text text-body-1 product-detail-description">
               {{ product.description || 'รายละเอียดสินค้าจะแสดงที่นี่' }}
@@ -85,9 +86,39 @@
       <h2 class="section-heading mb-4">สินค้าใกล้เคียง</h2>
       <v-row>
         <v-col v-for="related in relatedProducts" :key="related._id" cols="12" sm="6" md="4">
-          <product-card :product="related" @add="addRelatedToCart" />
+          <product-card :product="related" @add="addRelatedToCart" @wishlist="addToWishlist" />
         </v-col>
       </v-row>
+    </section>
+    <section v-if="product" class="mt-10">
+      <div class="text-overline primary--text">CUSTOMER REVIEWS</div>
+      <div class="d-flex align-center flex-wrap mb-4">
+        <h2 class="section-heading mr-3">รีวิวจากผู้ซื้อ</h2>
+        <span class="review-stars" aria-label="คะแนนเฉลี่ย">
+          <v-icon v-for="star in 5" :key="star" small :color="star <= Math.round(reviewSummary.averageRating) ? 'warning' : 'grey lighten-1'">mdi-star</v-icon>
+        </span>
+        <span class="muted-text ml-2">{{ reviewSummary.averageRating.toFixed(1) }} · {{ reviewSummary.count }} รีวิว</span>
+      </div>
+      <v-alert v-if="reviewError" type="error" outlined>{{ reviewError }}</v-alert>
+      <v-row>
+        <v-col v-for="review in reviews" :key="review._id" cols="12" md="6">
+          <v-card class="app-shell-card pa-5">
+            <div class="d-flex align-center justify-space-between">
+              <strong>{{ review.user?.name || 'ลูกค้า' }}</strong>
+              <span>{{ '★'.repeat(review.rating) }}<span class="muted-text">{{ '★'.repeat(5 - review.rating) }}</span></span>
+            </div>
+            <p class="mb-1 mt-3">{{ review.comment || 'ไม่มีข้อความรีวิว' }}</p>
+            <div class="caption muted-text">ซื้อแล้ว · {{ formatDate(review.createdAt) }}</div>
+          </v-card>
+        </v-col>
+      </v-row>
+      <v-card v-if="isCustomer" class="app-shell-card pa-5 mt-4" max-width="720">
+        <h3 class="text-h6 mb-3">{{ myReview ? 'แก้ไขรีวิวของคุณ' : 'เขียนรีวิว' }}</h3>
+        <p class="caption muted-text">รีวิวได้หลัง Order ของสินค้านี้มีสถานะจัดส่งแล้วเท่านั้น</p>
+        <v-select v-model="reviewRating" :items="[5, 4, 3, 2, 1]" label="คะแนน 1–5" outlined dense />
+        <v-textarea v-model="reviewComment" label="ความคิดเห็น" rows="3" outlined counter="2000" />
+        <v-btn color="primary" :loading="savingReview" @click="saveReview">บันทึกรีวิว</v-btn>
+      </v-card>
     </section>
     <v-snackbar v-model="snackbar" :color="snackbarColor">{{ snackbarText }}</v-snackbar>
   </div>
@@ -96,6 +127,8 @@
 <script>
 import productService from '../services/productService';
 import ProductCard from '../components/products/ProductCard.vue';
+import reviewService from '../services/reviewService';
+import wishlistService from '../services/wishlistService';
 import { getApiError } from '../services/api';
 
 export default {
@@ -111,10 +144,23 @@ export default {
     snackbarColor: 'success',
     imageFailed: false,
     selectedGalleryIndex: 0,
+    reviews: [],
+    reviewSummary: { averageRating: 0, count: 0 },
+    reviewRating: 5,
+    reviewComment: '',
+    reviewError: '',
+    savingReview: false,
   }),
   computed: {
     isAuthenticated() {
       return this.$store.getters['auth/isAuthenticated'];
+    },
+    isCustomer() {
+      return this.$store.getters['auth/currentUser']?.role === 'user';
+    },
+    myReview() {
+      const currentUser = this.$store.getters['auth/currentUser'];
+      return this.reviews.find((review) => String(review.user?._id) === String(currentUser?._id || currentUser?.id));
     },
     relatedProducts() {
       if (!this.product?.category?._id) return [];
@@ -156,11 +202,45 @@ export default {
         const { data } = productResponse;
         this.product = data.data;
         this.selectedGalleryIndex = 0;
+        await this.loadReviews();
       } catch (error) {
         this.error = getApiError(error, 'ไม่พบสินค้านี้');
       } finally {
         this.loading = false;
       }
+    },
+    async loadReviews() {
+      try {
+        const { data } = await reviewService.list(this.product._id);
+        this.reviews = data.data.items || [];
+        this.reviewSummary = data.data.summary || { averageRating: 0, count: 0 };
+        if (this.myReview) {
+          this.reviewRating = this.myReview.rating;
+          this.reviewComment = this.myReview.comment;
+        }
+      } catch (error) {
+        this.reviewError = getApiError(error, 'โหลดรีวิวไม่สำเร็จ');
+      }
+    },
+    async saveReview() {
+      this.reviewError = '';
+      this.savingReview = true;
+      try {
+        await reviewService.save(this.product._id, { rating: Number(this.reviewRating), comment: this.reviewComment });
+        await this.loadReviews();
+        this.snackbarText = 'บันทึกรีวิวแล้ว'; this.snackbar = true;
+      } catch (error) {
+        this.reviewError = getApiError(error, 'บันทึกรีวิวไม่สำเร็จ');
+      } finally { this.savingReview = false; }
+    },
+    async addToWishlist(product) {
+      try {
+        await wishlistService.add(product._id);
+        this.snackbarText = 'บันทึกในรายการโปรดแล้ว'; this.snackbar = true;
+      } catch (error) { this.snackbarText = getApiError(error, 'บันทึกรายการโปรดไม่สำเร็จ'); this.snackbar = true; }
+    },
+    formatDate(value) {
+      return value ? new Date(value).toLocaleDateString('th-TH') : '-';
     },
     addRelatedToCart(product) {
       this.$store.dispatch('cart/addToCart', { product, quantity: 1 })

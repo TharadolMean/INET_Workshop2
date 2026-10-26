@@ -30,6 +30,10 @@ const mutations = {
     localStorage.setItem('shop_token', token);
     localStorage.setItem('shop_user', JSON.stringify(user));
   },
+  UPDATE_PROFILE(currentState, updates) {
+    currentState.user = { ...currentState.user, ...updates };
+    localStorage.setItem('shop_user', JSON.stringify(currentState.user));
+  },
   CLEAR_AUTH(currentState) {
     currentState.token = '';
     currentState.user = null;

@@ -112,7 +112,7 @@
     </v-row>
     <v-row v-else-if="visibleProducts.length">
       <v-col v-for="product in visibleProducts" :key="product._id" cols="12" sm="6" md="4" lg="3">
-        <product-card :product="product" @add="addToCart" />
+        <product-card :product="product" @add="addToCart" @wishlist="addToWishlist" />
       </v-col>
     </v-row>
     <v-card v-else class="app-shell-card pa-10 text-center">
@@ -131,6 +131,7 @@
 import ProductCard from '../components/products/ProductCard.vue';
 import { getApiError } from '../services/api';
 import categoryService from '../services/categoryService';
+import wishlistService from '../services/wishlistService';
 
 export default {
   name: 'ProductsView',
@@ -236,6 +237,14 @@ export default {
         this.showMessage(`เพิ่ม ${product.name} ลงตะกร้าแล้ว`, 'success');
       } catch (error) {
         this.showMessage(error.message || 'เพิ่มสินค้าลงตะกร้าไม่สำเร็จ', 'error');
+      }
+    },
+    async addToWishlist(product) {
+      try {
+        await wishlistService.add(product._id);
+        this.showMessage(`บันทึก ${product.name} ในรายการโปรดแล้ว`, 'success');
+      } catch (error) {
+        this.showMessage(getApiError(error, 'บันทึกรายการโปรดไม่สำเร็จ'), 'error');
       }
     },
     showMessage(text, color) {

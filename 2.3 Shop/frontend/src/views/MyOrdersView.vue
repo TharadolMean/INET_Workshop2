@@ -91,8 +91,17 @@
           </div>
 
           <div class="d-flex justify-space-between align-center order-total mt-5">
-            <span class="font-weight-medium">ยอดรวมทั้ง Order</span>
+            <span class="font-weight-medium">{{ selectedOrder.subtotalPrice !== undefined ? 'ยอดสุทธิหลังส่วนลด' : 'ยอดรวมทั้ง Order' }}</span>
             <strong class="price-text">{{ formatPrice(selectedOrder.totalPrice) }} บาท</strong>
+          </div>
+          <div v-if="selectedOrder.subtotalPrice !== undefined" class="mt-3 order-price-breakdown">
+            <div class="d-flex justify-space-between"><span>ยอดสินค้าก่อนส่วนลด</span><span>{{ formatPrice(selectedOrder.subtotalPrice) }} บาท</span></div>
+            <div class="d-flex justify-space-between"><span>ส่วนลด{{ selectedOrder.couponCode ? ` · ${selectedOrder.couponCode}` : '' }}</span><span>-{{ formatPrice(selectedOrder.discountAmount) }} บาท</span></div>
+          </div>
+          <div v-if="selectedOrder.shippingAddress && selectedOrder.shippingAddress.line1" class="mt-5">
+            <div class="section-heading text-subtitle-1">ที่อยู่ใน Order</div>
+            <div>{{ selectedOrder.shippingAddress.recipient }} · {{ selectedOrder.shippingAddress.phone }}</div>
+            <div class="muted-text">{{ selectedOrder.shippingAddress.line1 }} {{ selectedOrder.shippingAddress.line2 }} {{ selectedOrder.shippingAddress.subdistrict }} {{ selectedOrder.shippingAddress.district }} {{ selectedOrder.shippingAddress.province }} {{ selectedOrder.shippingAddress.postalCode }}</div>
           </div>
         </v-card-text>
       </v-card>

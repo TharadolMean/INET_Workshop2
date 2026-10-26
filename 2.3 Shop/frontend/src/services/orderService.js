@@ -13,8 +13,8 @@ export default {
   create(productId, quantity) {
     return api.post(`/products/${productId}/orders`, { quantity });
   },
-  createOrder(items) {
-    return api.post('/orders', { items });
+  createOrder(items, options = {}) {
+    return api.post('/orders', { items, ...options });
   },
   cancel(id) {
     return api.post(`/orders/${id}/cancel`);

@@ -14,6 +14,9 @@ import AdminCategoriesView from '../views/AdminCategoriesView.vue';
 import AdminOrdersView from '../views/AdminOrdersView.vue';
 import AdminUsersView from '../views/AdminUsersView.vue';
 import AdminDashboardView from '../views/AdminDashboardView.vue';
+import CustomerAccountView from '../views/CustomerAccountView.vue';
+import WishlistView from '../views/WishlistView.vue';
+import AdminCouponsView from '../views/AdminCouponsView.vue';
 
 Vue.use(Router);
 
@@ -40,6 +43,8 @@ const router = new Router({
       component: MyOrdersView,
       meta: { requiresAuth: true, requiresCustomer: true },
     },
+    { path: '/account', name: 'customer-account', component: CustomerAccountView, meta: { requiresAuth: true, requiresCustomer: true } },
+    { path: '/wishlist', name: 'wishlist', component: WishlistView, meta: { requiresAuth: true, requiresCustomer: true } },
     {
       path: '/admin',
       component: AdminLayout,
@@ -74,6 +79,12 @@ const router = new Router({
           path: 'users',
           name: 'admin-users',
           component: AdminUsersView,
+          meta: { requiresAuth: true, requiresAdmin: true },
+        },
+        {
+          path: 'coupons',
+          name: 'admin-coupons',
+          component: AdminCouponsView,
           meta: { requiresAuth: true, requiresAdmin: true },
         },
       ],

@@ -110,6 +110,10 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - ดูประวัติและรายละเอียด Order ของตัวเอง
 - ติดตามสถานะ Order และประวัติการเปลี่ยนสถานะ
 - ยกเลิก Order ของตัวเองได้ก่อนเริ่มจัดเตรียมสินค้า โดยระบบคืนสต็อกให้ครั้งเดียว
+- บันทึกโปรไฟล์ เบอร์โทรศัพท์ และสมุดที่อยู่จัดส่ง; ข้อมูลแยกตามบัญชีและที่อยู่ถูก snapshot ลง Order เมื่อเลือกใช้
+- บันทึก Wishlist ฝั่ง server และดูรายการเดิมได้เมื่อเข้าสู่ระบบจากเครื่องเดิมหรือเครื่องอื่น
+- ใช้รหัสคูปองได้ โดย backend คำนวณส่วนลดจากราคาสินค้าจริงและแสดงยอดก่อนส่วนลด ส่วนลด และยอด Order จำลอง
+- เขียนรีวิวได้เมื่อมี Order ของสินค้านั้นที่จัดส่งแล้ว; แก้ไขหรือลบได้เฉพาะรีวิวของตนเอง
 - เลือกดูสินค้าและหมวดหมู่ที่เปิดใช้งานได้โดยไม่ต้อง login; ต้อง login และได้รับอนุมัติก่อนใช้ตะกร้าและสั่งซื้อ
 - กรองสินค้าได้ตามหมวดหมู่ คำค้นหา ช่วงราคา สต็อก และการเรียงลำดับ
 - ดูภาพสินค้าแบบแกลเลอรี ข้อมูลจำเพาะ และสินค้าในหมวดหมู่เดียวกัน
@@ -118,6 +122,7 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 ### Admin
 
 - ดู Dashboard สรุป Order มูลค่า Order จำลอง ลูกค้า สินค้า/สต็อก Order ล่าสุด สินค้าขายดี สถานะ และแนวโน้มรายวัน/เดือน พร้อมตัวกรองวันที่
+- สร้างและจัดการคูปองส่วนลดแบบเปอร์เซ็นต์หรือจำนวนเงิน พร้อมช่วงเวลา ยอดขั้นต่ำ เพดานส่วนลด และจำนวนสิทธิ์
 - Dashboard แสดงสต็อกต่ำเฉพาะสินค้าที่เปิดขาย; Order ยกเลิกไม่ถูกรวมในมูลค่า Order หรือยอดขายสินค้า
 - เพิ่มและแก้ไขสินค้า; การลบจะเก็บสินค้าเข้าคลัง (archive) และกู้คืนได้
 - จัดการรูปสินค้าได้สูงสุด 8 ภาพ และบันทึกข้อมูลจำเพาะแบบชื่อ/ค่า
@@ -145,6 +150,14 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 - `POST /products/:id/orders`
 - `POST /orders`
 - `GET /orders/mine`
+- `GET/PATCH /customers/me`
+- `GET/POST /customers/me/addresses`
+- `PUT/DELETE /customers/me/addresses/:addressId`
+- `GET /wishlist`, `POST/DELETE /wishlist/:productId`
+- `POST /coupons/validate`
+- `GET /products/:id/reviews`, `POST /products/:id/reviews`
+- `PUT/DELETE /reviews/:id`
+- `GET/POST /admin/coupons`, `PUT/DELETE /admin/coupons/:id`
 - `GET /orders`
 - `POST /orders/:id/cancel`
 - `PATCH /orders/:id/status` (admin)
@@ -160,6 +173,10 @@ Development proxy จะส่ง `/api` ไปยัง Backend ที่ port 
 Dashboard ใช้ MongoDB aggregation และช่วงวันที่ UTC (ค่าเริ่มต้น 30 วันล่าสุด, สูงสุด 10 ปี; กราฟรายวันจำกัดไม่เกิน 366 วัน) มูลค่า Order คำนวณจาก `totalPrice` และไม่นับ Order ที่ยกเลิก จึงเป็นมูลค่า Order จำลอง ไม่ใช่รายได้ที่รับชำระแล้ว จำนวนลูกค้ารวมผู้ใช้ role `user` ทั้งหมด และสินค้า/สต็อกบน Dashboard นับเฉพาะ Product ที่ไม่ archive
 
 สถานะ Order คือ `pending → confirmed → packing → shipped → delivered` โดยยกเลิกได้จาก `pending` หรือ `confirmed` เท่านั้น การยกเลิกผ่าน transaction เปลี่ยนสถานะ คืน stock และบันทึก Inventory Movement พร้อมกัน Order เก่าที่ไม่มีสถานะจะอ่านเป็น `delivered` เพื่อไม่ให้ยกเลิกแล้วคืน stock ให้รายการที่อาจจัดส่งไปแล้ว; Order เก่าไม่มี status history ย้อนหลัง
+
+Wishlist, profile และ address book เก็บใน MongoDB และแยกตามผู้ใช้จาก JWT โดยตรง คูปองตรวจวันใช้งาน ยอดขั้นต่ำ stock และราคาปัจจุบันบน backend; การ checkout จองสิทธิ์คูปอง บันทึก redemption, immutable price/address snapshots, Order และ stock movements ใน MongoDB transaction เดียว การยกเลิก Order ที่ยังยกเลิกได้จะคืนสิทธิ์คูปองให้ครั้งเดียว Order เก่าที่ไม่มี breakdown จะแสดงยอดเดิมโดยไม่ backfill
+
+รีวิว public อ่านได้ แต่เขียนได้เฉพาะบัญชีลูกค้าที่มี Order ของสินค้านั้นสถานะ `delivered` (รวม legacy Order ที่ไม่มีสถานะซึ่งระบบเดิมถือว่าปิดแล้ว) มีรีวิวได้หนึ่งรายการต่อ Product ต่อผู้ใช้; สรุปคะแนนคำนวณจากข้อมูลรีวิวจริง
 
 การ checkout ของ Frontend ใช้ `POST /orders` เพื่อสร้าง Order เดียวที่มีสินค้าได้หลายรายการ ระบบจะตรวจสอบ stock ทั้งหมดใน Transaction เดียว และจะล้าง Cart เมื่อสร้าง Order สำเร็จเท่านั้น ส่วน `POST /products/:id/orders` ยังคงรองรับ Order แบบสินค้าเดียวเพื่อความเข้ากันได้กับ Workshop 01
 
@@ -195,3 +212,4 @@ Postman collection อยู่ที่ `backend/postman/Workshop_1.postman_col
 - รูปสินค้าจัดเก็บในเครื่องผ่าน Multer; ค่าชนิดไฟล์ตรวจจาก MIME metadata และยังไม่มี content sniffing
 - การ archive Product คงเอกสาร Product และ Order ไว้ใน MongoDB โดยไม่ต้อง migration; ฟิลด์ archive ของเอกสารเก่าจะถือว่า active
 - Product schema เพิ่ม `specifications` และ `images` แบบ optional/default ว่าง โดยเก็บ `image` เดิมไว้รองรับ record และ client เก่า ไม่ต้อง migration; gallery ใช้รูปที่ upload ในเครื่องเท่านั้น
+- Phase 4 เพิ่มฟิลด์ optional ใน User/Order และ collections ใหม่ `Wishlist`, `Coupon`, `CouponRedemption`, `ProductReview`; ค่าเริ่มต้นรักษา record เก่าได้โดยไม่ต้อง migration อย่างไรก็ตาม checkout ที่ใช้คูปองยังต้องใช้ MongoDB replica set ตาม requirement ของ transaction เดิม

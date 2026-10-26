@@ -41,8 +41,19 @@
           </div>
           <v-divider class="mb-4" />
           <div class="d-flex justify-space-between align-center">
-            <span class="font-weight-medium">ยอดรวม</span><span class="price-text">{{ formatPrice(total) }} บาท</span>
+            <span class="muted-text">ยอดก่อนส่วนลด (ประมาณการ)</span><span>{{ formatPrice(total) }} บาท</span>
           </div>
+          <div class="coupon-entry mt-4">
+            <v-text-field v-model="couponCode" label="รหัสคูปอง" outlined dense hide-details :disabled="Boolean(couponQuote)" @keyup.enter="applyCoupon" />
+            <v-btn v-if="!couponQuote" block outlined color="primary" class="mt-2" :loading="validatingCoupon" @click="applyCoupon">ใช้คูปอง</v-btn>
+            <v-btn v-else block text color="error" class="mt-2" @click="clearCoupon">นำคูปองออก</v-btn>
+          </div>
+          <div v-if="couponQuote" class="coupon-breakdown mt-4" aria-live="polite">
+            <div class="d-flex justify-space-between"><span>คูปอง {{ couponQuote.couponCode }}</span><span>-{{ formatPrice(couponQuote.discountAmount) }} บาท</span></div>
+            <div class="d-flex justify-space-between mt-2"><strong>ยอด Order</strong><strong class="price-text">{{ formatPrice(couponQuote.totalPrice) }} บาท</strong></div>
+          </div>
+          <v-select v-if="addresses.length" v-model="addressId" :items="addresses" :item-text="addressLabel" item-value="_id" label="ที่อยู่จัดส่ง (ไม่บังคับ)" outlined dense clearable class="mt-4" />
+          <div v-else class="caption muted-text mt-4">ยังไม่มีที่อยู่จัดส่ง <router-link to="/account">เพิ่มที่อยู่ในบัญชี</router-link></div>
           <v-btn block large color="primary" class="mt-6" :loading="checkingOut" @click="checkoutDialog = true">
             <v-icon left>mdi-credit-card-outline</v-icon>สั่งซื้อสินค้า
           </v-btn>
@@ -72,7 +83,7 @@
     <v-dialog v-model="checkoutDialog" max-width="450">
       <v-card class="app-shell-card">
         <v-card-title>ยืนยันการสั่งซื้อ</v-card-title>
-        <v-card-text>ระบบจะตรวจสอบสต็อกทั้งหมดก่อนสร้าง Order เดียว หากรายการใดไม่พอจะยกเลิกทั้งคำสั่งซื้อ</v-card-text>
+          <v-card-text>ระบบจะตรวจราคา สต็อก คูปอง และที่อยู่จัดส่งบนเซิร์ฟเวอร์อีกครั้งก่อนสร้าง Order ยอดนี้เป็นยอดจำลอง ไม่มีการชำระเงินจริง</v-card-text>
         <v-card-actions><v-spacer /><v-btn text @click="checkoutDialog = false">ยกเลิก</v-btn><v-btn color="primary" :loading="checkingOut" @click="checkout">ยืนยันสั่งซื้อ</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
@@ -82,6 +93,8 @@
 
 <script>
 import CartItem from '../components/cart/CartItem.vue';
+import couponService from '../services/couponService';
+import customerService from '../services/customerService';
 import { getApiError } from '../services/api';
 
 export default {
@@ -96,6 +109,11 @@ export default {
     checkoutDialog: false,
     checkingOut: false,
     validatingCart: true,
+    couponCode: '',
+    couponQuote: null,
+    validatingCoupon: false,
+    addresses: [],
+    addressId: null,
   }),
   computed: {
     items() {
@@ -110,6 +128,13 @@ export default {
   },
   created() {
     this.validateCart();
+    this.loadAddresses();
+  },
+  watch: {
+    items: {
+      deep: true,
+      handler() { this.couponQuote = null; },
+    },
   },
   methods: {
     async validateCart() {
@@ -123,6 +148,31 @@ export default {
         this.validatingCart = false;
       }
     },
+    async loadAddresses() {
+      try {
+        const { data } = await customerService.listAddresses();
+        this.addresses = data.data || [];
+        this.addressId = this.addresses.find((address) => address.isDefault)?._id || this.addresses[0]?._id || null;
+      } catch (error) { this.error = getApiError(error, 'โหลดที่อยู่จัดส่งไม่สำเร็จ'); }
+    },
+    async applyCoupon() {
+      if (!this.couponCode.trim()) return;
+      this.validatingCoupon = true;
+      try {
+        const items = this.items.map((item) => ({ product: item.product._id, quantity: item.quantity }));
+        const cartSnapshot = JSON.stringify(items);
+        const { data } = await couponService.validate({ code: this.couponCode.trim(), items });
+        const currentSnapshot = JSON.stringify(this.items.map((item) => ({ product: item.product._id, quantity: item.quantity })));
+        if (cartSnapshot !== currentSnapshot) {
+          this.showMessage('ตะกร้าเปลี่ยนระหว่างตรวจคูปอง กรุณาตรวจใหม่อีกครั้ง', 'warning');
+          return;
+        }
+        this.couponQuote = data.data;
+      } catch (error) { this.showMessage(getApiError(error, 'ใช้คูปองไม่สำเร็จ'), 'error'); }
+      finally { this.validatingCoupon = false; }
+    },
+    clearCoupon() { this.couponCode = ''; this.couponQuote = null; },
+    addressLabel(address) { return `${address.label} — ${address.recipient} — ${address.province}`; },
     updateQuantity(payload) {
       try {
         this.$store.dispatch('cart/updateQuantity', payload);
@@ -142,7 +192,10 @@ export default {
       this.checkingOut = true;
       this.error = '';
       try {
-        const order = await this.$store.dispatch('cart/checkout');
+        const order = await this.$store.dispatch('cart/checkout', {
+          ...(this.addressId ? { addressId: this.addressId } : {}),
+          ...(this.couponQuote ? { couponCode: this.couponQuote.couponCode } : {}),
+        });
         await this.$store.dispatch('products/fetchProducts');
         this.checkoutDialog = false;
         this.showMessage(`สั่งซื้อสำเร็จ ${order.items.length} รายการและอัปเดตสต็อกแล้ว`, 'success');

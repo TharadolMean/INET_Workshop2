@@ -32,6 +32,22 @@ const orderSchema = new mongoose.Schema(
     unitPrice: { type: Number, min: 0 },
     items: { type: [orderItemSchema], default: undefined },
     totalPrice: { type: Number, required: true, min: 0 },
+    // Immutable checkout snapshots; absent on legacy orders.
+    subtotalPrice: { type: Number, min: 0 },
+    discountAmount: { type: Number, min: 0, default: 0 },
+    couponCode: { type: String, default: '', trim: true },
+    coupon: { type: mongoose.Schema.Types.ObjectId, ref: 'Coupon', default: null },
+    shippingAddress: {
+      label: { type: String, default: '' },
+      recipient: { type: String, default: '' },
+      phone: { type: String, default: '' },
+      line1: { type: String, default: '' },
+      line2: { type: String, default: '' },
+      subdistrict: { type: String, default: '' },
+      district: { type: String, default: '' },
+      province: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+    },
     // New orders set pending explicitly; old status-less records default closed to prevent unsafe restocks.
     status: { type: String, enum: orderStatusValues, default: 'delivered', index: true },
     statusHistory: { type: [statusHistorySchema], default: [] },

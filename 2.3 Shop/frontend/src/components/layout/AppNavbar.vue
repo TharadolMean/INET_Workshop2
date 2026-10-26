@@ -37,6 +37,8 @@
           </v-btn>
         </template>
         <v-btn v-if="isAuthenticated && !isAdmin" text class="nav-link" to="/my-orders">คำสั่งซื้อของฉัน</v-btn>
+        <v-btn v-if="isAuthenticated && !isAdmin" icon class="nav-link" aria-label="รายการโปรด" to="/wishlist"><v-icon>mdi-heart-outline</v-icon></v-btn>
+        <v-btn v-if="isAuthenticated && !isAdmin" text class="nav-link" to="/account">บัญชีของฉัน</v-btn>
         <div v-if="isAdmin" class="admin-nav-links d-flex align-center">
           <v-btn text class="nav-link" to="/admin/products">จัดการสินค้า</v-btn>
           <v-btn text class="nav-link" to="/admin/categories">หมวดหมู่</v-btn>
@@ -94,6 +96,8 @@
           <v-list-item-icon><v-icon>mdi-clipboard-list-outline</v-icon></v-list-item-icon>
           <v-list-item-title>คำสั่งซื้อของฉัน</v-list-item-title>
         </v-list-item>
+        <v-list-item v-if="isAuthenticated && !isAdmin" to="/wishlist" @click="drawer = false"><v-list-item-icon><v-icon>mdi-heart-outline</v-icon></v-list-item-icon><v-list-item-title>รายการโปรด</v-list-item-title></v-list-item>
+        <v-list-item v-if="isAuthenticated && !isAdmin" to="/account" @click="drawer = false"><v-list-item-icon><v-icon>mdi-account-cog-outline</v-icon></v-list-item-icon><v-list-item-title>บัญชีของฉัน</v-list-item-title></v-list-item>
         <v-list-item @click="toggleTheme">
           <v-list-item-icon><v-icon>{{ darkTheme ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon></v-list-item-icon>
           <v-list-item-title>{{ darkTheme ? 'ใช้ธีมสว่าง' : 'ใช้ธีมมืด' }}</v-list-item-title>

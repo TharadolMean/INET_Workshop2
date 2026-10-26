@@ -100,12 +100,12 @@ const actions = {
       .filter(Boolean);
     commit('REPLACE_ITEMS', validItems);
   },
-  async checkout({ commit, state: currentState }) {
+  async checkout({ commit, state: currentState }, options = {}) {
     const items = currentState.items.map((item) => ({
       product: item.product._id,
       quantity: item.quantity,
     }));
-    const { data } = await orderService.createOrder(items);
+    const { data } = await orderService.createOrder(items, options);
     commit('CLEAR');
     return data.data;
   },

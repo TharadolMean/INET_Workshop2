@@ -3,6 +3,9 @@ const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const Product = require('../src/models/Product');
 const Order = require('../src/models/Order');
+const Wishlist = require('../src/models/Wishlist');
+const Coupon = require('../src/models/Coupon');
+const ProductReview = require('../src/models/ProductReview');
 const { validateProductBody } = require('../src/controllers/product.controller');
 
 test('legacy product documents default to active without a migration', () => {
@@ -11,6 +14,25 @@ test('legacy product documents default to active without a migration', () => {
   assert.equal(product.archivedAt, null);
   assert.deepEqual(product.specifications, []);
   assert.deepEqual(product.images, []);
+});
+
+test('legacy user and order documents accept customer-profile and price-snapshot additions', async () => {
+  const User = require('../src/models/User');
+  const user = new User({ name: 'Legacy user', email: 'legacy-profile@example.test', password: 'test-only' });
+  assert.deepEqual(user.addresses, []);
+  const order = new Order({ product: new mongoose.Types.ObjectId(), user: user._id, quantity: 1, unitPrice: 10, totalPrice: 10 });
+  await assert.doesNotReject(order.validate());
+  assert.equal(order.subtotalPrice, undefined);
+  assert.equal(order.discountAmount, 0);
+});
+
+test('wishlist, coupon and review schemas validate their owner and business fields', async () => {
+  const userId = new mongoose.Types.ObjectId();
+  const productId = new mongoose.Types.ObjectId();
+  const wishlist = new Wishlist({ user: userId, products: [productId] });
+  const coupon = new Coupon({ code: 'SAVE10', discountType: 'percent', discountValue: 10 });
+  const review = new ProductReview({ product: productId, user: userId, order: new mongoose.Types.ObjectId(), rating: 5 });
+  await Promise.all([wishlist.validate(), coupon.validate(), review.validate()]);
 });
 
 test('product specifications accept structured display data without changing legacy fields', async () => {

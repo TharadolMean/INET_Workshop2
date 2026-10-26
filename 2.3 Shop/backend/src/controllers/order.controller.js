@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const InventoryMovement = require('../models/InventoryMovement');
+const Coupon = require('../models/Coupon');
+const CouponRedemption = require('../models/CouponRedemption');
+const User = require('../models/User');
+const { validateCoupon } = require('../utils/couponRules');
 const r = require('../utils/response');
 const {
   statuses,
@@ -97,10 +101,14 @@ exports.listByProduct = async (req, res) => {
 
 // POST /api/v1/orders - atomic multi-item checkout
 exports.createBatch = async (req, res) => {
-  const { items } = req.body || {};
+  const { items, couponCode, addressId } = req.body || {};
   if (!Array.isArray(items) || items.length === 0) {
     return r.badRequest(res, 'items must be a non-empty array');
   }
+  if (couponCode !== undefined && (typeof couponCode !== 'string' || !/^[A-Z0-9_-]{3,40}$/i.test(couponCode.trim()))) {
+    return r.badRequest(res, 'couponCode must be 3-40 letters, digits, _ or -');
+  }
+  if (addressId !== undefined && !mongoose.isValidObjectId(addressId)) return r.badRequest(res, 'addressId must be a valid id');
 
   const normalizedItems = [];
   const productIds = new Set();
@@ -130,7 +138,7 @@ exports.createBatch = async (req, res) => {
     await session.withTransaction(async () => {
       const orderItems = [];
       const movements = [];
-      let totalPrice = 0;
+      let subtotalPrice = 0;
 
       for (const requested of normalizedItems) {
         const product = await Product.findOneAndUpdate(
@@ -148,8 +156,8 @@ exports.createBatch = async (req, res) => {
           throw stockError;
         }
 
-        const lineTotal = product.price * requested.quantity;
-        totalPrice += lineTotal;
+        const lineTotal = Math.round(product.price * requested.quantity * 100) / 100;
+        subtotalPrice = Math.round((subtotalPrice + lineTotal) * 100) / 100;
         orderItems.push({
           product: product._id,
           name: product.name,
@@ -166,14 +174,75 @@ exports.createBatch = async (req, res) => {
         });
       }
 
+      let coupon = null;
+      let discountAmount = 0;
+      let totalPrice = subtotalPrice;
+      let couponCodeSnapshot = '';
+      if (couponCode) {
+        coupon = await Coupon.findOne({ code: couponCode.trim().toUpperCase() }).session(session);
+        const userUseCount = coupon
+          ? await CouponRedemption.countDocuments({ coupon: coupon._id, user: req.user._id }).session(session)
+          : 0;
+        const couponResult = validateCoupon(coupon, subtotalPrice, { userUseCount });
+        if (couponResult.error) {
+          const couponError = new Error(couponResult.error);
+          couponError.isCouponValidation = true;
+          throw couponError;
+        }
+        const couponFilter = { _id: coupon._id, isActive: true };
+        if (coupon.usageLimit !== null && coupon.usageLimit !== undefined) {
+          couponFilter.usageCount = { $lt: coupon.usageLimit };
+        }
+        const reservedCoupon = await Coupon.findOneAndUpdate(
+          couponFilter,
+          { $inc: { usageCount: 1 } },
+          { returnDocument: 'after', session }
+        );
+        if (!reservedCoupon) {
+          const couponError = new Error('coupon usage limit has been reached');
+          couponError.isCouponValidation = true;
+          throw couponError;
+        }
+        discountAmount = couponResult.discountAmount;
+        totalPrice = couponResult.totalPrice;
+        couponCodeSnapshot = coupon.code;
+      }
+
+      let shippingAddress;
+      if (addressId) {
+        const customer = await User.findById(req.user._id).select('addresses').session(session);
+        const address = customer?.addresses.id(addressId);
+        if (!address) {
+          const addressError = new Error('shipping address not found');
+          addressError.isCheckoutValidation = true;
+          throw addressError;
+        }
+        shippingAddress = address.toObject();
+        delete shippingAddress._id;
+      }
+
       const now = new Date();
       const [order] = await Order.create([{
         user: req.user._id,
         items: orderItems,
+        subtotalPrice,
+        discountAmount,
+        couponCode: couponCodeSnapshot,
+        coupon: coupon?._id || null,
         totalPrice,
+        shippingAddress,
         ...initialOrderStatus(req.user._id, now),
       }], { session });
       createdOrder = order;
+
+      if (coupon) {
+        await CouponRedemption.create([{
+          coupon: coupon._id,
+          user: req.user._id,
+          order: order._id,
+          discountAmount,
+        }], { session });
+      }
 
       await InventoryMovement.insertMany(movements.map((movement) => ({
         ...movement,
@@ -184,6 +253,8 @@ exports.createBatch = async (req, res) => {
     });
   } catch (error) {
     if (error.isBatchOrderValidation) return r.conflict(res, error.message);
+    if (error.isCouponValidation) return r.badRequest(res, error.message);
+    if (error.isCheckoutValidation) return r.badRequest(res, error.message);
     if (isTransactionUnavailable(error)) return transactionErrorResponse(res);
     throw error;
   } finally {
@@ -223,6 +294,8 @@ exports.create = async (req, res) => {
         quantity,
         unitPrice: product.price,
         totalPrice: product.price * quantity,
+        subtotalPrice: Math.round(product.price * quantity * 100) / 100,
+        discountAmount: 0,
         ...initialOrderStatus(req.user._id, now),
       }], { session });
       createdOrder = order;
@@ -339,6 +412,11 @@ const cancelOrderWithStockRestore = async (req, orderId, { admin = false } = {})
       }
 
       await InventoryMovement.insertMany(movements, { session });
+      const redemption = await CouponRedemption.findOne({ order: order._id }).session(session);
+      if (redemption) {
+        await Coupon.updateOne({ _id: redemption.coupon, usageCount: { $gt: 0 } }, { $inc: { usageCount: -1 } }, { session });
+        await CouponRedemption.deleteOne({ _id: redemption._id }, { session });
+      }
       resultOrder = cancelledOrder;
     });
   } catch (error) {

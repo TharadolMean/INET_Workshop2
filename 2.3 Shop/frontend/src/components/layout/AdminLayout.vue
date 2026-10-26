@@ -93,6 +93,7 @@ export default {
       { name: 'admin-categories', title: 'จัดการหมวดหมู่', icon: 'mdi-shape-outline' },
       { name: 'admin-orders', title: 'คำสั่งซื้อ', icon: 'mdi-clipboard-list-outline' },
       { name: 'admin-users', title: 'ผู้ใช้งาน', icon: 'mdi-account-multiple-outline' },
+      { name: 'admin-coupons', title: 'คูปองส่วนลด', icon: 'mdi-ticket-percent-outline' },
     ],
   }),
   computed: {
@@ -112,6 +113,7 @@ export default {
         'admin-categories': 'หมวดหมู่',
         'admin-orders': 'คำสั่งซื้อ',
         'admin-users': 'ผู้ใช้งาน',
+        'admin-coupons': 'คูปองส่วนลด',
       };
       return titles[this.$route.name] || 'จัดการระบบ';
     },

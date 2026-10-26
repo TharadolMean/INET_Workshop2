@@ -118,9 +118,11 @@
 
 ## Phase 4 — Customer features
 
-- Add persistent server-owned wishlist, customer profile and address book.
-- Add coupon rules with backend validation and immutable order discount/price snapshots.
-- Add product reviews with verified-purchase eligibility and clear order price breakdowns.
+- Implemented server-owned wishlist, customer profile and address book. Customer resources are scoped from the authenticated user; profile role/email cannot be changed, and saved addresses are capped at 10 with one default address.
+- Added admin-managed fixed/percentage coupons with active dates, minimum subtotal, optional maximum discount, total and per-customer usage limits. Coupon previews use server product prices; checkout revalidates and reserves coupon usage in the same transaction as stock, Order and audit writes. Cancellation before packing restores coupon usage in that transaction.
+- New Orders snapshot subtotal, discount, code, net simulated order value and optional shipping address. Existing Orders without snapshots remain readable and show their legacy total.
+- Added public product ratings/reviews with one review per customer/product and delivered-order verification; only the owner can edit or remove a review.
+- Phase 4 manual verification: use two approved customer accounts to verify profile/address and wishlist isolation; create coupon rules as admin and test date/minimum/caps/per-user/total limits; apply a coupon and compare quote to the Order snapshot; cancel an eligible Order and confirm stock and coupon usage are restored once; attempt review before delivery and as a non-buyer, then verify a delivered buyer review appears in the public average and only its owner can manage it.
 
 ## Phase 5 — Advanced shop features
 

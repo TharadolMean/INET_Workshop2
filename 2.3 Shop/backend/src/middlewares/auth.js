@@ -38,9 +38,14 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+const requireCustomer = (req, res, next) => {
+  if (req.user?.role !== 'user') return res_.forbidden(res, 'customer account required');
+  next();
+};
+
 const optionalAuthenticate = (req, res, next) => {
   if (!req.headers.authorization) return next();
   return authenticate(req, res, next);
 };
 
-module.exports = { authenticate, optionalAuthenticate, requireAdmin };
+module.exports = { authenticate, optionalAuthenticate, requireAdmin, requireCustomer };
